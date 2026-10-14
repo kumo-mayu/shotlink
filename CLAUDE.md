@@ -66,6 +66,18 @@ dotnet test
 - 作業の途中は関係する試験だけ回してよい。**コミットの前は全部**
 - 計算で決まる物（メニューに何が並ぶか・通知の文言・押したら何が起きるか）は試験で確かめる。画面で見るのは配置と見た目だけ
 
+### アプリを起動して確かめる
+
+1. 作業用フォルダ（scratchpad）に保存先と見張るフォルダを作り、保存先に `settings.json` を置く。
+   **`"watchVrchat": false`** にして、本物の `Pictures\VRChat` を見張らない：
+   `{ "watchVrchat": false, "extraFolders": [ { "path": "<作業用>\\watched", "includeSubfolders": true } ] }`
+2. `SHOTLINK_HOME` にその保存先を入れて `ShotLink.App\bin\Debug\net10.0-windows10.0.17763.0\ShotLink.exe` を起動する。
+   `SHOTLINK_HOME` があると、通知の登録は `KumoMayu.ShotLink.Dev` になり、Windows の起動時の登録には触れない
+3. 素材は `dotnet run -c Release --project tools/QrBench -- --dump <作業用>\fixtures` で作り（RGBA の PNG と 8K）、
+   別のフォルダに写してから `watched` へ**移動**する
+4. 確かめは `<保存先>\Logs\<日付>.log`（写真・QR・メモリの行）と `history.json`。設定の窓は `PrintWindow` で撮って見る
+5. **通知をクリックする確かめは人にしかできない。**ユーザーが席にいるときに、何を押すかを並べて頼む
+
 ---
 
 ## 読み方（文脈を節約する）

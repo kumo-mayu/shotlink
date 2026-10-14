@@ -99,6 +99,8 @@ public sealed class PhotoProcessor : IAsyncDisposable
             if (Interlocked.Decrement(ref _pending) == 0)
             {
                 ReturnMemory();
+                using var self = System.Diagnostics.Process.GetCurrentProcess();
+                _log($"メモリ：.NET {GC.GetTotalMemory(false) / 1_048_576} MB・全体 {self.PrivateMemorySize64 / 1_048_576} MB");
             }
         }
     }
@@ -115,6 +117,16 @@ public sealed class PhotoProcessor : IAsyncDisposable
         GC.Collect(2, GCCollectionMode.Aggressive, blocking: true, compacting: true);
     }
 
+    /// <summary>
+    /// 画像を読んで QR を探す。非同期の関数の中に画像を置かない：置くと、終わった処理が次の写真まで画像を掴み続け、
+    /// 8K を読んだあと 36 MB が戻らなかった（2026-10-14 に測った）
+    /// </summary>
+    IReadOnlyList<string>? Read(string path)
+    {
+        var image = _loader.TryLoad(path);
+        return image is null ? null : _reader.Read(image);
+    }
+
     async Task ProcessAsync(string path, CancellationToken cancel)
     {
         if (!await _waiter.WaitAsync(path, cancel))
@@ -123,14 +135,13 @@ public sealed class PhotoProcessor : IAsyncDisposable
             return;
         }
 
-        var image = _loader.TryLoad(path);
-        if (image is null)
+        var texts = Read(path);
+        if (texts is null)
         {
             _log($"画像として読めない：{Path.GetFileName(path)}");
             return;
         }
 
-        var texts = _reader.Read(image);
         foreach (var decision in _dispatcher.Decide(texts, _options()))
         {
             // ログに中身は書かない。URL ならホスト名まで（仕様書 7章）

@@ -23,10 +23,14 @@ if (dumpAt >= 0)
     foreach (var s in samples)
     {
         var img = new SceneBuilder(1920, 1080, 7).Place(s.P).Blur(s.Blur).Noise(6).Build();
-        PngWriter.Write(Path.Combine(dir, s.Name + ".png"), img);
+        // VRChat の写真と同じ RGBA で書く（読み込みでカラーを灰色に直す道を通す）
+        PngWriter.Write(Path.Combine(dir, s.Name + ".png"), img, rgba: true);
         Console.WriteLine($"{s.Name}: 読めた {string.Join(", ", reader.Read(img))}");
     }
 
+    var big = new SceneBuilder(7680, 4320, 9).Place(new QrPlacement("https://booth.pm/ja/items/8000000", 3000, 2000, 900, 10, 20, 0)).Blur(4).Noise(6).Build();
+    PngWriter.Write(Path.Combine(dir, "8k-photo.png"), big, rgba: true);
+    Console.WriteLine($"8k-photo: 読めた {string.Join(", ", reader.Read(big))}");
     return;
 }
 

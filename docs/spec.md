@@ -67,6 +67,8 @@ VRChat の写真フォルダを見張り、新しく撮られた写真に QR コ
   - 作り物なので、実際の写真での読める範囲は違いうる [要確認]（9章）
 - 読み取りは裏のスレッドで行い、1枚ずつ順に処理する
 - [決定] 1枚を処理し終えたら、画像に使ったメモリを Windows に返す。8K を1枚読むと、.NET が画像の分（約 33 MB）を持ち続け、待ち受け中の ShotLink だけの分が 19 MB から 51 MB に増えたまま戻らなかった（2026-10-14）
+  - 作ったあとに測った値：待ち受け 15 MB、1080p を読んだあと 19〜21 MB、8K を読んでいる間は一時 約 290 MB、読み終わったあと 25〜28 MB（.NET の分は 0〜4 MB で、残りは Windows の画像の部品などが持つ分）
+  - 画像を非同期の関数の中に置くと、終わった処理が次の写真まで画像を掴み続ける（8K のあと .NET の分が 36 MB 残った）。読み込みと読み取りは非同期でない関数に分ける
 
 ### 3.4 同じ QR が何度も来たとき
 
@@ -141,7 +143,9 @@ VRChat の写真フォルダを見張り、新しく撮られた写真に QR コ
   - 常駐のメモリ（ShotLink だけの分）：アイコンだけで 13 MB（.NET と Windows Forms の土台）、トースト通知を使うと 19 MB
   - [決定] トリミング（`PublishTrimmed`）は**使わない**（ユーザー判断）。部分的に掛けると exe 60 MB・zip 22 MB になり、通知のクリックまで動いたが、Windows Forms のトリミングは Microsoft が公式に対応していない
   - [案] 単一ファイルの圧縮（`EnableCompressionInSingleFile`）は**使わない**。exe は 79 MB に縮むが、zip は 73 MB とほぼ同じで、起動が 0.2 秒遅くなり、常駐のメモリが 229 MB に増える
-- [案] 画像は Windows の部品（WIC）で読む。ライブラリを足さずに PNG・JPEG・WebP が読める。WebP は Windows 11 なら最初から読め、Windows 10 では「WebP 画像拡張機能」が要る
+- 画像は Windows の部品（WIC。`Windows.Graphics.Imaging` から使う）で読む。ライブラリを足さずに PNG・JPEG・WebP が読める。WebP は Windows 11 なら最初から読め、Windows 10 では「WebP 画像拡張機能」が要る [要確認：WebP は実物で読んでいない]
+  - 灰色（Gray8）で受け取れれば 8K でも 33 MB で済む。受け取れない形式だけ BGRA でもらって直す
+- 配る形は `ShotLink.App/Properties/PublishProfiles/win-x64.pubxml`（`dotnet publish ShotLink.App -p:PublishProfile=win-x64` で `publish\ShotLink-win-x64\ShotLink.exe` 1つ）
 - [案] ライセンスは MIT（Paramroom と同じ）。zxing-cpp（と、その中の libzint。BSD-3-Clause）など同梱するライブラリは `THIRD-PARTY-NOTICES.txt` に書く
 
 ## 9. テスト
