@@ -77,6 +77,10 @@ dotnet test
    別のフォルダに写してから `watched` へ**移動**する
 4. 確かめは `<保存先>\Logs\<日付>.log`（写真・QR・メモリの行）と `history.json`。設定の窓は `PrintWindow` で撮って見る
 5. **通知をクリックする確かめは人にしかできない。**ユーザーが席にいるときに、何を押すかを並べて頼む
+6. **確かめの間は ShotLink を起動したままにする。**止まっている間に開発用の通知をクリックされると、Windows は
+   `SHOTLINK_HOME` を付けずに exe を起こすので、本番の保存先と本番の登録の名前で動いてしまう。
+   終えるときは、開発用の通知を消してから止める（`ToastNotificationManager.History.Clear('KumoMayu.ShotLink.Dev')`）
+7. 通知の見本の中身は、例示用のドメイン（example.com など）だけにする。本体はクリックで本当にブラウザを開く
 
 ---
 
