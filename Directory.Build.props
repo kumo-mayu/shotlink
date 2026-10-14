@@ -1,0 +1,15 @@
+<Project>
+  <PropertyGroup>
+    <!--
+      デバッグ情報は別ファイル（.pdb）にせず、DLL と exe の中へ入れる。
+      配る版は単一ファイルにまとめるので、.pdb を配らないとログのスタックトレースから
+      ファイル名と行番号が消え、渡した先で起きた不具合を追えなくなる（Chmonos と同じ判断）。
+    -->
+    <DebugType>embedded</DebugType>
+
+    <!-- 配る版。ここ1か所で全プロジェクトにそろえる -->
+    <Version>0.1.0</Version>
+    <Product>ShotLink</Product>
+    <Copyright>Copyright 2026 kumo_mayu</Copyright>
+  </PropertyGroup>
+</Project>

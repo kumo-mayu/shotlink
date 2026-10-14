@@ -1,0 +1,4 @@
+# 改行は LF にそろえる。core.autocrlf=true のまま作業すると、コミットのたびに
+# 「LF will be replaced by CRLF」が出て、CRLF・LF・混在が入り混じる（Chmonos で起きた）。
+# 文字かどうかは git に見分けさせる（画像などはそのまま）
+* text=auto eol=lf

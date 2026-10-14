@@ -1,0 +1,16 @@
+# Build artifacts
+bin/
+obj/
+.vs/
+publish/
+*.user
+
+# Generated QR test images (spec 9: commit the generator, not the images - an 8K PNG is tens of MB)
+tests/fixtures/generated/
+
+# Claude Code local settings. The project skills, rules and hooks are shared
+.claude/*
+!.claude/skills/
+!.claude/rules/
+!.claude/settings.json
+!.claude/hooks/
