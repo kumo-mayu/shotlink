@@ -54,12 +54,20 @@ public class QrDispatcherTests
         Assert.Equal(["https://a.example/", "b"], ds.Select(d => d.Content.Text));
     }
 
+    // 仕様書 3.4（2026-10-14 に変えた）：撮った QR は毎回知らせ、同じ URL を直接開くのは最後に開いてから 60 秒に1回
     [Fact]
-    public void 同じ中身は_60_秒のあいだ二回目以降を扱わない()
+    public void 同じ_URL_は毎回知らせ_開くのは_60_秒に一回()
     {
-        Assert.Single(_dispatcher.Decide(["x"], Open));
+        const string url = "https://a.example/";
+        Assert.Equal(QrAction.Opened, Assert.Single(_dispatcher.Decide([url], Open)).Action);
+
         _clock.Advance(TimeSpan.FromSeconds(59));
-        Assert.Empty(_dispatcher.Decide(["x"], Open));
+        var again = Assert.Single(_dispatcher.Decide([url], Open));
+        Assert.Equal(QrAction.NotifyToOpen, again.Action);
+        Assert.True(again.OpenedRecently);
+
+        _clock.Advance(TimeSpan.FromSeconds(1));
+        Assert.Equal(QrAction.Opened, Assert.Single(_dispatcher.Decide([url], Open)).Action);
     }
 
     [Fact]
@@ -70,14 +78,27 @@ public class QrDispatcherTests
         Assert.Single(_dispatcher.Decide(["x"], Open));
     }
 
+    // 2026-10-14 の実機：最後に見た時刻から数えていたので、撮り続けると黙ったままになった
     [Fact]
-    public void 撮り続けているあいだは黙ったまま()
+    public void 撮り続けても毎回知らせ_最初に開いてから_60_秒たてばまた開く()
     {
-        Assert.Single(_dispatcher.Decide(["x"], Open));
-        for (var i = 0; i < 10; i++)
+        const string url = "https://a.example/";
+        var actions = new List<QrAction>();
+        for (var i = 0; i < 4; i++)
         {
-            _clock.Advance(TimeSpan.FromSeconds(30));
-            Assert.Empty(_dispatcher.Decide(["x"], Open));
+            actions.Add(Assert.Single(_dispatcher.Decide([url], Open)).Action);
+            _clock.Advance(TimeSpan.FromSeconds(20));
+        }
+
+        Assert.Equal([QrAction.Opened, QrAction.NotifyToOpen, QrAction.NotifyToOpen, QrAction.Opened], actions);
+    }
+
+    [Fact]
+    public void 設定でいつも開くにすると_同じ_URL_も毎回開く()
+    {
+        for (var i = 0; i < 3; i++)
+        {
+            Assert.Equal(QrAction.Opened, Assert.Single(_dispatcher.Decide(["https://a.example/"], Open with { ReopenSameUrl = true })).Action);
         }
     }
 
@@ -136,13 +157,13 @@ public class QrDispatcherSummarizeTests
     }
 
     [Fact]
-    public void 数えるのは除外したあとの件数()
+    public void 数えるのは写真に写っている件数()
     {
-        // 前の写真で見た3件と新しい1件：新しいのは1件だけなのでまとめない
+        // 少し前に見た物も除かない（毎回知らせるので、まとめるかも写っている数で決める）
         _dispatcher.Decide(Urls(3), Open);
         var batch = _dispatcher.Decide([.. Urls(3), "https://a.example/new"], Open);
-        Assert.False(batch.Summarized);
-        Assert.Single(batch);
+        Assert.True(batch.Summarized);
+        Assert.Equal(4, batch.Count);
     }
 
     [Fact]

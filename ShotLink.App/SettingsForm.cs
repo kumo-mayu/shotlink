@@ -13,6 +13,7 @@ sealed class SettingsForm : Form
     readonly Action _clearHistory;
 
     readonly CheckBox _openDirectly = new() { Text = "URL を直接ブラウザで開く", AutoSize = true };
+    readonly CheckBox _reopenSameUrl = new() { Text = "同じ URL を 60 秒以内にもう一度撮ったときも開く", AutoSize = true, Margin = new Padding(20, 0, 3, 3) };
     readonly CheckBox _openWhenSummarized = new() { Text = "1枚に 4 件以上あって通知をまとめたときも、全部開く", AutoSize = true, Margin = new Padding(20, 0, 3, 3) };
     readonly CheckBox _notifyNonUrl = new() { Text = "URL 以外の QR も知らせる", AutoSize = true };
     readonly CheckBox _playSound = new() { Text = "通知の音を鳴らす", AutoSize = true };
@@ -61,8 +62,9 @@ sealed class SettingsForm : Form
         var read = Group("QR を読んだとき");
         read.Controls.Add(_openDirectly);
         read.Controls.Add(Note("ON にすると、知らない人が見せた QR の URL も確かめずに開きます。"));
+        read.Controls.Add(_reopenSameUrl);
         read.Controls.Add(_openWhenSummarized);
-        _openDirectly.CheckedChanged += (_, _) => _openWhenSummarized.Enabled = _openDirectly.Checked;
+        _openDirectly.CheckedChanged += (_, _) => _reopenSameUrl.Enabled = _openWhenSummarized.Enabled = _openDirectly.Checked;
         read.Controls.Add(_notifyNonUrl);
         read.Controls.Add(_playSound);
         root.Controls.Add(read.Parent!);
@@ -153,7 +155,8 @@ sealed class SettingsForm : Form
     {
         _openDirectly.Checked = s.OpenDirectly;
         _openWhenSummarized.Checked = s.OpenWhenSummarized;
-        _openWhenSummarized.Enabled = s.OpenDirectly;
+        _reopenSameUrl.Checked = s.ReopenSameUrl;
+        _reopenSameUrl.Enabled = _openWhenSummarized.Enabled = s.OpenDirectly;
         _notifyNonUrl.Checked = s.NotifyNonUrl;
         _playSound.Checked = s.PlaySound;
         _watchVrchat.Checked = s.WatchVrchat;
@@ -168,6 +171,7 @@ sealed class SettingsForm : Form
     {
         OpenDirectly = _openDirectly.Checked,
         OpenWhenSummarized = _openWhenSummarized.Checked,
+        ReopenSameUrl = _reopenSameUrl.Checked,
         NotifyNonUrl = _notifyNonUrl.Checked,
         PlaySound = _playSound.Checked,
         WatchVrchat = _watchVrchat.Checked,

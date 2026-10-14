@@ -57,7 +57,8 @@ sealed class Toasts : IDisposable
     {
         var text = ToastText.For(decision);
         var kind = decision.Content.Kind == QrKind.WebUrl ? ToastKind.Url : ToastKind.Text;
-        Show(kind, decision.Content.Text, text.Title, text.Body, text.Footer);
+        // 同じ中身の通知は、前の通知を置き換える。通知は撮るたびに出すので、同じ物を撮り続けても通知センターに並ばないように
+        Show(kind, decision.Content.Text, text.Title, text.Body, text.Footer, TagFor(decision.Content.Text));
     }
 
     public void ShowBatch(QrBatch batch, string photo)
@@ -86,7 +87,11 @@ sealed class Toasts : IDisposable
 
     public void Dispose() => ToastNotificationManagerCompat.OnActivated -= OnActivated;
 
-    void Show(ToastKind kind, string payload, string title, string body, string footer)
+    /// <summary>通知の置き換えの名前。中身そのものは長すぎる（64 文字まで）ので、ハッシュの頭を使う</summary>
+    static string TagFor(string text) =>
+        Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(text)), 0, 16);
+
+    void Show(ToastKind kind, string payload, string title, string body, string footer, string? tag = null)
     {
         try
         {
@@ -101,7 +106,14 @@ sealed class Toasts : IDisposable
                 builder.AddAudio(new ToastAudio { Silent = true });
             }
 
-            builder.Show();
+            builder.Show(toast =>
+            {
+                if (tag is not null)
+                {
+                    toast.Tag = tag;
+                    toast.Group = "qr";
+                }
+            });
 
             // 出したことも残す。席を外している間の確かめで「出たか」をログで追えるように。中身は書かずホスト名まで（仕様書 7章）
             _log($"通知：{kind}：{(kind is ToastKind.Url or ToastKind.List ? title : "（中身は書かない）")}");

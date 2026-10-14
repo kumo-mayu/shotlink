@@ -18,6 +18,7 @@ public sealed record ToastText(string Title, string Body, string Footer)
         return decision.Action switch
         {
             QrAction.Opened => new(c.Host!, body, "ブラウザで開きました"),
+            QrAction.NotifyToOpen when decision.OpenedRecently => new(c.Host!, body, "少し前に開いたので開きませんでした。クリックで開きます"),
             QrAction.NotifyToOpen => new(c.Host!, body, "クリックで開きます"),
             _ => new("QR を読みました", body, "クリックでコピーします"),
         };

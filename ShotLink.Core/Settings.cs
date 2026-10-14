@@ -9,6 +9,9 @@ public sealed record Settings
     /// <summary>1枚に 4 件以上あって通知をまとめたときも直接開く（既定 OFF。仕様書 3.5）</summary>
     public bool OpenWhenSummarized { get; init; }
 
+    /// <summary>同じ URL を 60 秒以内にもう一度撮ったときも開く（既定 OFF。仕様書 3.4）</summary>
+    public bool ReopenSameUrl { get; init; }
+
     /// <summary>URL 以外の QR も知らせる</summary>
     public bool NotifyNonUrl { get; init; } = true;
 
@@ -24,7 +27,7 @@ public sealed record Settings
     /// <summary>通知の音を鳴らす</summary>
     public bool PlaySound { get; init; } = true;
 
-    public DispatchOptions ToDispatchOptions() => new(OpenDirectly, NotifyNonUrl, OpenWhenSummarized);
+    public DispatchOptions ToDispatchOptions() => new(OpenDirectly, NotifyNonUrl, OpenWhenSummarized, ReopenSameUrl);
 
     /// <summary>手で直した JSON の null の一覧・空の行を、空として受ける</summary>
     public Settings Normalized() => this with
