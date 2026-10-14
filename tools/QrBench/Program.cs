@@ -14,31 +14,43 @@ if (dumpAt >= 0)
 {
     var dir = args[dumpAt + 1];
     Directory.CreateDirectory(dir);
+    // 見本は人がクリックして確かめることがあるので、例示用に予約されたドメイン（RFC 2606）だけを使う。
+    // 本物のサイトの URL にすると、確かめのクリックで知らないページを開いてしまう
     var samples = new (string Name, QrPlacement P, int Blur)[]
     {
-        ("front-large", new("https://x.gd/Ab3dE", 960, 540, 300), 0),
-        ("tilt45-mid", new("https://booth.pm/ja/items/1234567", 600, 400, 160, 5, 45, 10, 40, 200), 1),
-        ("small-blur", new("https://x.gd/Ab3dE", 1500, 800, 90, 15, 0, 0, 50, 190), 2),
+        ("front-large", new("https://example.com/shotlink/front", 960, 540, 300), 0),
+        ("tilt45-mid", new("https://example.org/shotlink/tilt45", 600, 400, 200, 5, 45, 10, 40, 200), 1),
+        ("small-blur", new("https://example.net/shotlink/small", 1500, 800, 90, 15, 0, 0, 50, 190), 2),
+        ("text", new("ShotLink のテスト（URL ではない文字列）", 960, 540, 300), 0),
+        ("three", new("https://example.com/shotlink/1", 400, 540, 260), 0),
     };
     foreach (var s in samples)
     {
-        var img = new SceneBuilder(1920, 1080, 7).Place(s.P).Blur(s.Blur).Noise(6).Build();
+        var scene = new SceneBuilder(1920, 1080, 7).Place(s.P);
+        if (s.Name == "three")
+        {
+            // 1枚に3つ：通知が3件並ぶかを見る
+            scene.Place(new QrPlacement("https://example.org/shotlink/2", 960, 540, 260)).Place(new QrPlacement("ShotLink の3つ目", 1520, 540, 260));
+        }
+
+        var img = scene.Blur(s.Blur).Noise(6).Build();
         // VRChat の写真と同じ RGBA で書く（読み込みでカラーを灰色に直す道を通す）
         PngWriter.Write(Path.Combine(dir, s.Name + ".png"), img, rgba: true);
         Console.WriteLine($"{s.Name}: 読めた {string.Join(", ", reader.Read(img))}");
     }
 
-    var big = new SceneBuilder(7680, 4320, 9).Place(new QrPlacement("https://booth.pm/ja/items/8000000", 3000, 2000, 900, 10, 20, 0)).Blur(4).Noise(6).Build();
+    var big = new SceneBuilder(7680, 4320, 9).Place(new QrPlacement("https://example.com/shotlink/8k", 3000, 2000, 900, 10, 20, 0)).Blur(4).Noise(6).Build();
     PngWriter.Write(Path.Combine(dir, "8k-photo.png"), big, rgba: true);
     Console.WriteLine($"8k-photo: 読めた {string.Join(", ", reader.Read(big))}");
     return;
 }
 
-// 中身の長さで QR のマスの数が変わる（誤り訂正 M）。短い URL は Paramroom の 25×25 に近い
+// 中身の長さで QR のマスの数が変わる（誤り訂正 M）。短い URL は Paramroom の 25×25 に近い。
+// 2026-10-14 の測定は x.gd と booth.pm の同じ長さの URL で行った（例示用のドメインへ替えたが、長さは 18→19 字と 51→51 字で、マスの数は変わらない）
 (string Name, string Text)[] payloads =
 [
-    ("短 URL", "https://x.gd/Ab3dE"),
-    ("URL", "https://booth.pm/ja/items/1234567?utm_source=vrchat"),
+    ("短 URL", "https://example.co/"),
+    ("URL", "https://example.com/items/1234567?utm_source=vrchat"),
     ("長 URL", "https://example.com/very/long/path/for/testing/qr/density?query=" + new string('a', 80)),
 ];
 

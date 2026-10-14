@@ -80,6 +80,9 @@ sealed class Toasts : IDisposable
             }
 
             builder.Show();
+
+            // 出したことも残す。席を外している間の確かめで「出たか」をログで追えるように。中身は書かずホスト名まで（仕様書 7章）
+            _log($"通知：{kind}：{(kind == ToastKind.Url ? title : "（中身は書かない）")}");
         }
         catch (Exception e)
         {
