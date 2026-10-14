@@ -1,21 +1,21 @@
 using System.Drawing;
 using System.IO;
 using System.Windows;
+using Microsoft.Toolkit.Uwp.Notifications;
 using Forms = System.Windows.Forms;
 
 namespace ShotLink.App;
 
 /// <summary>
 /// 通知の作り方を決めるための試し（仕様書 8章 [要確認]・12章）。
-/// Windows Forms の NotifyIcon の吹き出し（Windows 10/11 ではトーストとして出る）で、
-/// 「通知をクリックしたら動く」が満たせるかを、出ている間と、通知センターへ入ったあとの両方で確かめる。
-/// 満たせれば部品を足さずに済み、exe も大きくならない
+/// NotifyIcon の吹き出しは、出ている間のクリックは受けられたが、通知センターに残らず、一度に1件しか出せなかった。
+/// トースト通知で、出ている間・通知センターに入ったあと・続けて何件か出したときのクリックを確かめる
 /// </summary>
 public partial class App : System.Windows.Application
 {
     Forms.NotifyIcon? _icon;
     string _log = "";
-    string _lastShown = "";
+    int _count;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -26,11 +26,24 @@ public partial class App : System.Windows.Application
                    ?? Path.Combine(Path.GetTempPath(), "ShotLink-spike");
         Directory.CreateDirectory(home);
         _log = Path.Combine(home, "notify-spike.log");
-        Log("起動");
+        Log($"起動（通知のクリックで起動されたか：{ToastNotificationManagerCompat.WasCurrentProcessToastActivated()}）");
+
+        // クリックは裏のスレッドで届く
+        ToastNotificationManagerCompat.OnActivated += args =>
+        {
+            var a = ToastArguments.Parse(args.Argument);
+            Log($"クリック：{a.Get("kind")}：{a.Get("text")}");
+        };
 
         var menu = new Forms.ContextMenuStrip();
-        menu.Items.Add("テスト通知（URL）", null, (_, _) => Show("booth.pm", "https://booth.pm/ja/items/1234567\nクリックで開く"));
-        menu.Items.Add("テスト通知（文字列）", null, (_, _) => Show("QR を読みました", "こんにちは\nクリックでコピー"));
+        menu.Items.Add("テスト通知（URL）", null, (_, _) => ShowUrl("https://booth.pm/ja/items/1234567"));
+        menu.Items.Add("テスト通知（文字列）", null, (_, _) => ShowText("こんにちは"));
+        menu.Items.Add("テスト通知（3件続けて）", null, (_, _) =>
+        {
+            ShowUrl("https://a.example/1");
+            ShowUrl("https://b.example/2");
+            ShowText("三つ目");
+        });
         menu.Items.Add("-");
         menu.Items.Add("終了", null, (_, _) => Quit());
 
@@ -41,17 +54,31 @@ public partial class App : System.Windows.Application
             ContextMenuStrip = menu,
             Visible = true,
         };
-        _icon.BalloonTipClicked += (_, _) => Log($"クリック：{_lastShown}");
-        _icon.BalloonTipClosed += (_, _) => Log($"閉じた：{_lastShown}");
-        _icon.BalloonTipShown += (_, _) => Log($"出た：{_lastShown}");
-
-        Show("booth.pm", "https://booth.pm/ja/items/1234567\nクリックで開く");
     }
 
-    void Show(string title, string text)
+    void ShowUrl(string url)
     {
-        _lastShown = title;
-        _icon!.ShowBalloonTip(10_000, title, text, Forms.ToolTipIcon.None);
+        var host = new Uri(url).IdnHost;
+        Log($"出す：URL：{url}");
+        new ToastContentBuilder()
+            .AddArgument("kind", "url")
+            .AddArgument("text", url)
+            .AddText(host)
+            .AddText(url)
+            .AddAttributionText($"クリックで開く（試し {++_count}）")
+            .Show();
+    }
+
+    void ShowText(string text)
+    {
+        Log($"出す：文字列：{text}");
+        new ToastContentBuilder()
+            .AddArgument("kind", "text")
+            .AddArgument("text", text)
+            .AddText("QR を読みました")
+            .AddText(text)
+            .AddAttributionText($"クリックでコピー（試し {++_count}）")
+            .Show();
     }
 
     void Quit()
@@ -66,8 +93,13 @@ public partial class App : System.Windows.Application
         Shutdown();
     }
 
-    void Log(string message) =>
-        File.AppendAllText(_log, $"{DateTime.Now:HH:mm:ss.fff} {message}{Environment.NewLine}");
+    void Log(string message)
+    {
+        lock (this)
+        {
+            File.AppendAllText(_log, $"{DateTime.Now:HH:mm:ss.fff} {message}{Environment.NewLine}");
+        }
+    }
 
     static Icon MakeIcon()
     {

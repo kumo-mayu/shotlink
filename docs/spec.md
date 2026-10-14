@@ -127,9 +127,15 @@ VRChat の写真フォルダを見張り、新しく撮られた写真に QR コ
 ## 8. 技術
 
 - [案] C# / WPF / **.NET 10**（`net10.0-windows`。Chmonos と同じ。SDK は `global.json` で固定）
-- [案] 通知領域のアイコン：WPF に部品が無いので、Windows Forms の `NotifyIcon`（`UseWindowsForms`）か H.NotifyIcon を使う
-- [案] トースト通知：通知をクリックしたときの動作が要る。方法（CommunityToolkit の通知部品か、Windows App SDK か）は、配布形態（下）と合わせて最初に試して決める [要確認]
-- [決定] 配布：`win-x64` の self-contained・単一ファイル（Paramroom の `make-release.sh` と同じ形）。インストーラーは無し。使う人に .NET を入れてもらう手順を増やさないため。作ってから大きさを測り、大きすぎれば見直す
+- 通知領域のアイコン：Windows Forms の `NotifyIcon`（`UseWindowsForms`）。部品を足さずに済む
+- 通知：**トースト**（`Microsoft.Toolkit.Uwp.Notifications` 7.1.3。MIT）。TFM は `net10.0-windows10.0.17763.0`。2026-10-14 に実機で試して決めた
+  - `NotifyIcon` の吹き出しは、出ている間のクリックは受けられたが、Windows 11 では**通知センターに残らず**、**一度に1件**しか出せない（次を出すと前が消える）。1枚に QR が複数あると最後の1つしか残らない
+  - トーストは、出ている間・通知センターに入ったあと・3件続けて出したときのどれも、どの通知をクリックしたかまで受け取れた
+  - この部品は、クリックを受け取るために Windows へ ShotLink を登録する（`HKCU\Software\Classes\AppUserModelId\<exe の場所>` と COM の登録、`%LOCALAPPDATA%\ToastNotificationManagerCompat\` のアイコン）。インストーラーが無いので、exe を消しても残る。[案] 設定の窓に「Windows への通知の登録を消す」を置き（部品の `Uninstall`）、README に「消す前に押す」と書く
+  - [決定] **Windows の通知がオフの人**には通知が見えない（作者の PC が実際にそうだった）。起動時と設定の窓で調べ、オフならアイコンとツールチップで「メニューの『最近読んだ QR』から開ける」と知らせる。「直接開く」が ON なら、通知が出なくても開く
+- [決定] 配布：`win-x64` の self-contained・単一ファイル（Paramroom の `make-release.sh` と同じ形）。インストーラーは無し。使う人に .NET を入れてもらう手順を増やさないため
+  - 大きさ（2026-10-14、通知の試しの段階）：exe 191 MB、zip 75 MB、起動 約 0.2 秒、常駐のメモリ 約 71 MB。いちばん大きい中身は Windows の API の橋渡し（`Microsoft.Windows.SDK.NET.dll` 22 MB）
+  - [案] 単一ファイルの圧縮（`EnableCompressionInSingleFile`）は**使わない**。exe は 79 MB に縮むが、zip は 73 MB とほぼ同じで、起動が 0.2 秒遅くなり、常駐のメモリが 229 MB に増える
 - [案] 画像は Windows の部品（WIC）で読む。ライブラリを足さずに PNG・JPEG・WebP が読める。WebP は Windows 11 なら最初から読め、Windows 10 では「WebP 画像拡張機能」が要る
 - [案] ライセンスは MIT（Paramroom と同じ）。zxing-cpp（と、その中の libzint。BSD-3-Clause）など同梱するライブラリは `THIRD-PARTY-NOTICES.txt` に書く
 
@@ -158,4 +164,4 @@ VRChat の写真フォルダを見張り、新しく撮られた写真に QR コ
 
 ## 12. 決めていないこと
 
-- トースト通知の実装方法
+- （今は無い。新しく出たらここに足す）
