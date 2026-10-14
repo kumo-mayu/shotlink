@@ -25,7 +25,7 @@ public class PhotoProcessorTests
 
     sealed class ReadyProbe : IFileProbe
     {
-        public long? TryGetReadableLength(string path) => path.Contains("never") ? null : 1000;
+        public FileCheck Check(string path) => path.Contains("never") ? new(null, FileEnding.Incomplete) : new(1000, FileEnding.Complete);
     }
 
     static GrayImage Photo(params string[] texts)
