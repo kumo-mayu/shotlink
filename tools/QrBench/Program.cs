@@ -23,6 +23,7 @@ if (dumpAt >= 0)
         ("small-blur", new("https://example.net/shotlink/small", 1500, 800, 90, 15, 0, 0, 50, 190), 2),
         ("text", new("ShotLink のテスト（URL ではない文字列）", 960, 540, 300), 0),
         ("three", new("https://example.com/shotlink/1", 400, 540, 260), 0),
+        ("bulk", new("https://example.com/shotlink/bulk1", 400, 300, 260), 0),
     };
     foreach (var s in samples)
     {
@@ -31,6 +32,15 @@ if (dumpAt >= 0)
         {
             // 1枚に3つ：通知が3件並ぶかを見る
             scene.Place(new QrPlacement("https://example.org/shotlink/2", 960, 540, 260)).Place(new QrPlacement("ShotLink の3つ目", 1520, 540, 260));
+        }
+
+        if (s.Name == "bulk")
+        {
+            // 1枚に 6 個（2 行 × 3 列）：通知が1件にまとまり、一覧が位置の順に並ぶかを見る
+            for (var i = 2; i <= 6; i++)
+            {
+                scene.Place(new QrPlacement($"https://example.com/shotlink/bulk{i}", 400 + (i - 1) % 3 * 560, 300 + (i - 1) / 3 * 480, 260));
+            }
         }
 
         var img = scene.Blur(s.Blur).Noise(6).Build();
