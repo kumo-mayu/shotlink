@@ -188,7 +188,11 @@ VRChat の写真フォルダを見張り、新しく撮られた写真に QR コ
   - [要確認] `Microsoft.Windows.SDK.NET.dll` は Windows SDK のライセンス条項（https://aka.ms/WinSDKLicenseURL）で配られている。.NET の Windows 向けのアプリには必ず入る物だが、条項の再配布の項を一度読む
 - BOOTH：単独の無料商品として同じ zip を置く
 - Paramroom：Paramroom の `make-release.sh` が ShotLink の最新の Releases から exe を取ってきて、Paramroom の zip に入れる。Paramroom の版を出すときに、その時点の最新を入れ直す（ShotLink を更新するたびに Paramroom を差し替えはしない）。同梱の README に「最新版は ShotLink の商品ページへ」と書く
-- 名前：公開前に J-PlatPat で「ShotLink」を引く [要確認：Claude が調べて報告し、判断はユーザー]。VRChat の名前の使い方（「for VRChat」などの書き方）も、VRChat の商標のガイドラインで確かめる [要確認]
+- 名前の調べ（2026-10-14、Claude。判断はユーザー）
+  - 「ShotLink」は、アメリカの PGA ツアー（ゴルフ）がショットの記録の仕組みの名前に使っている。アメリカの登録は、ソフトウェア（区分 9）の分は 2009 年に失効し、今あるのはゴルフの実況・成績の配信（区分 41）。分野は違うが、同じ名前の有名な物がある
+  - 日本の登録（J-PlatPat）は、Claude の道具からは引けなかった（画面の操作が要る）[要確認：ユーザーが J-PlatPat の商標検索で「ShotLink」「ショットリンク」を引く]
+  - VRChat の名前：VRChat の公式の返答（ask.vrchat.com、2024-02）は「VRChat が提供・承認していると見せようとしない限り、用途を示すために『VRChat』を使ってよい」。「for VRChat」のような書き方と、「非公式」の一言を添えれば足りる見込み
+- 名前：公開前に J-PlatPat で「ShotLink」を引く [要確認]。VRChat の名前の使い方（「for VRChat」などの書き方）も、VRChat の商標のガイドラインで確かめる [要確認]
 
 ## 12. 決めていないこと
 
