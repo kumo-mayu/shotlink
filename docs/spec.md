@@ -46,6 +46,7 @@ VRChat の写真フォルダを見張り、新しく撮られた写真に QR コ
   - [案] サブフォルダも含めるかどうかを**フォルダごとに**選べる（既定 OFF。`Pictures` 全体などを指定されたときに重くならないように）
 - 同じフォルダが重なったとき（追加のフォルダが VRChat のフォルダの中にある、など）は、1つのファイルを1回だけ扱う [案]
 - [案] **起動前からある写真は読まない**。起動後に増えたファイルだけを対象にする
+- [決定] **一時停止の間に増えた写真も、再開したあとに読まない**（起動前の写真と同じ扱い。止めた理由が「読まれたくない」だったときに、あとからまとめて開かないように）
 - 対象の拡張子：`.png` `.jpg` `.jpeg` `.webp`（VRChat の既定は `.png`。他のスクショ道具は `.jpg` が多い）[案]
 
 ### 3.2 書き込み途中のファイル
@@ -121,7 +122,8 @@ VRChat の写真フォルダを見張り、新しく撮られた写真に QR コ
 - [案] C# / WPF / **.NET 10**（`net10.0-windows`。Chmonos と同じ。SDK は `global.json` で固定）
 - [案] 通知領域のアイコン：WPF に部品が無いので、Windows Forms の `NotifyIcon`（`UseWindowsForms`）か H.NotifyIcon を使う
 - [案] トースト通知：通知をクリックしたときの動作が要る。方法（CommunityToolkit の通知部品か、Windows App SDK か）は、配布形態（下）と合わせて最初に試して決める [要確認]
-- 配布：`win-x64` の self-contained・単一ファイル（Paramroom の `make-release.sh` と同じ形）。インストーラーは無し
+- [決定] 配布：`win-x64` の self-contained・単一ファイル（Paramroom の `make-release.sh` と同じ形）。インストーラーは無し。使う人に .NET を入れてもらう手順を増やさないため。作ってから大きさを測り、大きすぎれば見直す
+- [案] 画像は Windows の部品（WIC）で読む。ライブラリを足さずに PNG・JPEG・WebP が読める。WebP は Windows 11 なら最初から読め、Windows 10 では「WebP 画像拡張機能」が要る
 - [案] ライセンスは MIT（Paramroom と同じ）。ZXing.Net など同梱するライブラリは `THIRD-PARTY-NOTICES.txt` に書く
 
 ## 9. テスト
