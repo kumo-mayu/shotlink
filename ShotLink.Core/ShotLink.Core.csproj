@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    QR の読み取り・中身の振り分け・同じ中身の除外・開く回数の上限を置く（仕様書 9章）。
+    UI と切り離して試験するため、WPF・WinForms・通知の部品に依らない net10.0 にしておく。
+    画像ファイルを読むのは App の側（WIC）で、ここは灰色の画素の並びだけを受ける
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ZXing.Net" Version="0.16.11" />
+  </ItemGroup>
+
+</Project>

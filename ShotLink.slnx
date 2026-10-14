@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="ShotLink.Core.Tests/ShotLink.Core.Tests.csproj" />
+  <Project Path="ShotLink.Core/ShotLink.Core.csproj" />
+</Solution>
