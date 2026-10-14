@@ -28,8 +28,11 @@ public sealed class FileReadyWaiter(IFileProbe probe, Func<TimeSpan, Cancellatio
 
     public static FileReadyWaiter CreateDefault() => new(new FileProbe(), Task.Delay);
 
-    /// <summary>読んでよくなったら true。あきらめたら false</summary>
-    public async Task<bool> WaitAsync(string path, CancellationToken cancel = default)
+    /// <summary>
+    /// 書き終わったら、ファイルを丸ごと写し取って返す。あきらめたら null。
+    /// 写しを返すのは、読み込み（8K で約 0.5 秒）の間に 写真に情報を書き足す道具がファイルを書き直しても、混ざった中身を読まないため
+    /// </summary>
+    public async Task<byte[]?> WaitAsync(string path, CancellationToken cancel = default)
     {
         long? previous = null;
         var quiet = TimeSpan.Zero;
@@ -44,10 +47,19 @@ public sealed class FileReadyWaiter(IFileProbe probe, Func<TimeSpan, Cancellatio
                 if (check.Ending == FileEnding.Complete
                     || (check.Ending == FileEnding.Unknown && quiet >= QuietPeriod))
                 {
-                    return true;
-                }
+                    // 写し取った中身を確かめる。書き直しの途中に当たったら（PNG の CRC が合わない）、0.2 秒後に写し直す
+                    var data = probe.ReadAll(path);
+                    if (data is not null && ImageIntegrity.Verify(data) != FileEnding.Incomplete)
+                    {
+                        return data;
+                    }
 
-                quiet += Interval;
+                    quiet = TimeSpan.Zero;
+                }
+                else
+                {
+                    quiet += Interval;
+                }
             }
             else
             {
@@ -56,7 +68,7 @@ public sealed class FileReadyWaiter(IFileProbe probe, Func<TimeSpan, Cancellatio
 
             if (waited >= Timeout)
             {
-                return false;
+                return null;
             }
 
             previous = check.Length;
@@ -84,6 +96,9 @@ public readonly record struct FileCheck(long? Length, FileEnding Ending);
 public interface IFileProbe
 {
     FileCheck Check(string path);
+
+    /// <summary>ファイルを丸ごと写し取る。開けなければ null</summary>
+    byte[]? ReadAll(string path);
 }
 
 public sealed class FileProbe : IFileProbe
@@ -102,6 +117,22 @@ public sealed class FileProbe : IFileProbe
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
             return new FileCheck(null, FileEnding.Incomplete);
+        }
+    }
+
+    public byte[]? ReadAll(string path)
+    {
+        try
+        {
+            // 書き手の邪魔をしない開き方にする。混ざった中身は ImageIntegrity が見分ける
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            var data = new byte[stream.Length];
+            stream.ReadExactly(data);
+            return data;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            return null;
         }
     }
 

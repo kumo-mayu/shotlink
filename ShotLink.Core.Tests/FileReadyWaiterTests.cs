@@ -12,7 +12,12 @@ public class FileReadyWaiterTests
 
         public int Calls => _i;
 
+        /// <summary>写し取りで返す中身を順に（最後を繰り返す）。既定は形式の分からない中身（そのまま受け入れられる）</summary>
+        public Queue<byte[]?> Snapshots { get; } = new();
+
         public FileCheck Check(string path) => checks[Math.Min(_i++, checks.Length - 1)];
+
+        public byte[]? ReadAll(string path) => Snapshots.Count > 1 ? Snapshots.Dequeue() : Snapshots.Count == 1 ? Snapshots.Peek() : new byte[20];
     }
 
     static FileCheck Done(long length) => new(length, FileEnding.Complete);
@@ -26,7 +31,7 @@ public class FileReadyWaiterTests
     public async Task 終わりの印がそろい大きさが二回続けて同じなら読んでよい()
     {
         var probe = new ScriptedProbe(Done(1000), Done(1000));
-        Assert.True(await new FileReadyWaiter(probe, NoWait).WaitAsync("x.png"));
+        Assert.NotNull(await new FileReadyWaiter(probe, NoWait).WaitAsync("x.png"));
         Assert.Equal(2, probe.Calls);
     }
 
@@ -34,7 +39,7 @@ public class FileReadyWaiterTests
     public async Task 書き込み中で開けない間は待つ()
     {
         var probe = new ScriptedProbe(Locked, Locked, Locked, Done(5000), Done(5000));
-        Assert.True(await new FileReadyWaiter(probe, NoWait).WaitAsync("x.png"));
+        Assert.NotNull(await new FileReadyWaiter(probe, NoWait).WaitAsync("x.png"));
         Assert.Equal(5, probe.Calls);
     }
 
@@ -42,7 +47,7 @@ public class FileReadyWaiterTests
     public async Task 大きくなり続けている間は待つ()
     {
         var probe = new ScriptedProbe(Partial(100), Partial(2000), Done(4000), Done(4000));
-        Assert.True(await new FileReadyWaiter(probe, NoWait).WaitAsync("x.png"));
+        Assert.NotNull(await new FileReadyWaiter(probe, NoWait).WaitAsync("x.png"));
         Assert.Equal(4, probe.Calls);
     }
 
@@ -51,7 +56,7 @@ public class FileReadyWaiterTests
     public async Task 大きさが止まっても終わりの印が無い_PNG_は読まない()
     {
         var probe = new ScriptedProbe(Partial(3000), Partial(3000), Partial(3000), Partial(9000), Done(12000), Done(12000));
-        Assert.True(await new FileReadyWaiter(probe, NoWait).WaitAsync("x.png"));
+        Assert.NotNull(await new FileReadyWaiter(probe, NoWait).WaitAsync("x.png"));
         Assert.Equal(6, probe.Calls);
     }
 
@@ -59,7 +64,7 @@ public class FileReadyWaiterTests
     public async Task 終わりの印が来ないままなら_十秒であきらめる()
     {
         var probe = new ScriptedProbe(Partial(3000));
-        Assert.False(await new FileReadyWaiter(probe, NoWait).WaitAsync("x.png"));
+        Assert.Null(await new FileReadyWaiter(probe, NoWait).WaitAsync("x.png"));
     }
 
     [Fact]
@@ -73,14 +78,34 @@ public class FileReadyWaiterTests
             return Task.CompletedTask;
         }
 
-        Assert.True(await new FileReadyWaiter(probe, Delay).WaitAsync("x.jpg"));
+        Assert.NotNull(await new FileReadyWaiter(probe, Delay).WaitAsync("x.jpg"));
         Assert.True(waited >= FileReadyWaiter.QuietPeriod);
+    }
+
+    // 2026-10-14 の実機：VRChat が書き終えたあと 写真に情報を書き足す道具が同じファイルを書き直し、読み込みの間に中身が混ざった
+    [Fact]
+    public async Task 写しが書き直しの途中なら捨てて写し直す()
+    {
+        var good = Png();
+        var mixed = (byte[])good.Clone();
+        mixed[good.Length / 2] ^= 0xFF;
+        var probe = new ScriptedProbe(Done(good.Length));
+        probe.Snapshots.Enqueue(mixed);
+        probe.Snapshots.Enqueue(good);
+        Assert.Equal(good, await new FileReadyWaiter(probe, NoWait).WaitAsync("x.png"));
+    }
+
+    static byte[] Png()
+    {
+        using var ms = new MemoryStream();
+        PngWriter.Write(ms, new SceneBuilder(32, 32).Build(), rgba: true);
+        return ms.ToArray();
     }
 
     [Fact]
     public async Task 大きさ_0_のままなら読まない()
     {
-        Assert.False(await new FileReadyWaiter(new ScriptedProbe(Done(0)), NoWait).WaitAsync("x.png"));
+        Assert.Null(await new FileReadyWaiter(new ScriptedProbe(Done(0)), NoWait).WaitAsync("x.png"));
     }
 
     [Fact]
@@ -94,7 +119,7 @@ public class FileReadyWaiterTests
             return Task.CompletedTask;
         }
 
-        Assert.False(await new FileReadyWaiter(probe, Delay).WaitAsync("x.png"));
+        Assert.Null(await new FileReadyWaiter(probe, Delay).WaitAsync("x.png"));
         Assert.Equal(FileReadyWaiter.Timeout, waited);
     }
 
@@ -104,7 +129,7 @@ public class FileReadyWaiterTests
         using var dir = new TempDir();
         var path = dir.Combine("a.png");
         PngWriter.Write(path, new SceneBuilder(64, 64).Build(), rgba: true);
-        Assert.True(await FileReadyWaiter.CreateDefault().WaitAsync(path));
+        Assert.NotNull(await FileReadyWaiter.CreateDefault().WaitAsync(path));
     }
 
     [Fact]
@@ -115,6 +140,41 @@ public class FileReadyWaiterTests
         await using var writing = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.Read);
         writing.Write(new byte[100]);
         Assert.Null(new FileProbe().Check(path).Length);
+    }
+}
+
+public class ImageIntegrityTests
+{
+    static byte[] Png()
+    {
+        using var ms = new MemoryStream();
+        PngWriter.Write(ms, new SceneBuilder(64, 64).Build(), rgba: true);
+        return ms.ToArray();
+    }
+
+    [Fact]
+    public void 書き終わった_PNG_は揃っている()
+    {
+        Assert.Equal(FileEnding.Complete, ImageIntegrity.Verify(Png()));
+    }
+
+    [Theory]
+    [InlineData(0.3)]
+    [InlineData(0.5)]
+    [InlineData(0.9)]
+    public void 中身が混ざった_PNG_は終わりの印があっても揃っていない(double where)
+    {
+        var png = Png();
+        png[(int)(png.Length * where)] ^= 0x5A;
+        Assert.Equal(FileEnding.Incomplete, ImageIntegrity.Verify(png));
+    }
+
+    [Fact]
+    public void 途中で切れた_PNG_と_後ろに余分のある_PNG_は揃っていない()
+    {
+        var png = Png();
+        Assert.Equal(FileEnding.Incomplete, ImageIntegrity.Verify(png[..(png.Length - 5)]));
+        Assert.Equal(FileEnding.Incomplete, ImageIntegrity.Verify([.. png, 0, 0, 0]));
     }
 }
 

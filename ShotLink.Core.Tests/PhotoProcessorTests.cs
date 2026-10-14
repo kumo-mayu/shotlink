@@ -7,7 +7,7 @@ public class PhotoProcessorTests
 {
     sealed class MapLoader(Dictionary<string, GrayImage?> images) : IImageLoader
     {
-        public GrayImage? TryLoad(string path) => images.GetValueOrDefault(path);
+        public GrayImage? TryLoad(byte[] data, string name) => images.GetValueOrDefault(name);
     }
 
     sealed class RecordingSink : IQrSink
@@ -26,6 +26,8 @@ public class PhotoProcessorTests
     sealed class ReadyProbe : IFileProbe
     {
         public FileCheck Check(string path) => path.Contains("never") ? new(null, FileEnding.Incomplete) : new(1000, FileEnding.Complete);
+
+        public byte[]? ReadAll(string path) => new byte[20];
     }
 
     static GrayImage Photo(params string[] texts)

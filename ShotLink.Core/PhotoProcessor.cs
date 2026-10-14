@@ -5,8 +5,9 @@ namespace ShotLink.Core;
 /// <summary>画像ファイルを明るさの並びにする。App の側で WIC を使う（Core は画像の形式を知らない）</summary>
 public interface IImageLoader
 {
-    /// <summary>読めなければ null（壊れている・対応していない形式）</summary>
-    GrayImage? TryLoad(string path);
+    /// <summary>写し取ったバイト列から読む。読めなければ null（壊れている・対応していない形式）</summary>
+    /// <param name="name">ログに出す名前</param>
+    GrayImage? TryLoad(byte[] data, string name);
 }
 
 /// <summary>決めたことを実際に行う（開く・知らせる・履歴に残す）。App が通知の部品で受ける</summary>
@@ -164,22 +165,24 @@ public sealed class PhotoProcessor : IAsyncDisposable
     /// 画像を読んで QR を探す。非同期の関数の中に画像を置かない：置くと、終わった処理が次の写真まで画像を掴み続け、
     /// 8K を読んだあと 36 MB が戻らなかった（2026-10-14 に測った）
     /// </summary>
-    IReadOnlyList<string>? Read(string path)
+    IReadOnlyList<string>? Read(byte[] data, string path)
     {
-        var image = _loader.TryLoad(path);
+        var image = _loader.TryLoad(data, Path.GetFileName(path));
         return image is null ? null : _reader.Read(image).Select(f => f.Text).ToList();
     }
 
     async Task ProcessAsync(string path, CancellationToken cancel)
     {
-        if (!await _waiter.WaitAsync(path, cancel))
+        var data = await _waiter.WaitAsync(path, cancel);
+        if (data is null)
         {
             Log($"書き込みが終わらないので読まない：{Path.GetFileName(path)}");
             Fail(path);
             return;
         }
 
-        var texts = Read(path);
+        var texts = Read(data, path);
+        data = null;
         if (texts is null)
         {
             Log($"画像として読めない：{Path.GetFileName(path)}");
