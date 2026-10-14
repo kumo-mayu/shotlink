@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/tools/">
+    <Project Path="tools/IconGen/IconGen.csproj" />
     <Project Path="tools/QrBench/QrBench.csproj" />
   </Folder>
   <Project Path="ShotLink.App/ShotLink.App.csproj" />

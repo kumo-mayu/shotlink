@@ -9,13 +9,14 @@ namespace ShotLink.Fixtures;
 /// </summary>
 public static class PngWriter
 {
-    public static void Write(string path, GrayImage image)
+    /// <param name="rgba">VRChat の写真と同じ RGBA で書く（灰色を R・G・B に写し、不透明にする）。読み込みでカラーを灰色に直す道を通すため</param>
+    public static void Write(string path, GrayImage image, bool rgba = false)
     {
         using var file = File.Create(path);
-        Write(file, image);
+        Write(file, image, rgba);
     }
 
-    public static void Write(Stream output, GrayImage image)
+    public static void Write(Stream output, GrayImage image, bool rgba = false)
     {
         output.Write([0x89, (byte)'P', (byte)'N', (byte)'G', 0x0D, 0x0A, 0x1A, 0x0A]);
 
@@ -23,7 +24,7 @@ public static class PngWriter
         BinaryPrimitives.WriteInt32BigEndian(header.AsSpan(0), image.Width);
         BinaryPrimitives.WriteInt32BigEndian(header.AsSpan(4), image.Height);
         header[8] = 8; // 1画素8ビット
-        header[9] = 0; // 灰色
+        header[9] = (byte)(rgba ? 6 : 0); // 6 は RGBA、0 は灰色
         WriteChunk(output, "IHDR", header);
 
         using var compressed = new MemoryStream();
@@ -32,7 +33,21 @@ public static class PngWriter
             for (var y = 0; y < image.Height; y++)
             {
                 z.WriteByte(0); // 行ごとの前処理なし
-                z.Write(image.Pixels, y * image.Width, image.Width);
+                if (!rgba)
+                {
+                    z.Write(image.Pixels, y * image.Width, image.Width);
+                    continue;
+                }
+
+                var row = new byte[image.Width * 4];
+                for (var x = 0; x < image.Width; x++)
+                {
+                    var v = image.Pixels[y * image.Width + x];
+                    row[x * 4] = row[x * 4 + 1] = row[x * 4 + 2] = v;
+                    row[x * 4 + 3] = 255;
+                }
+
+                z.Write(row);
             }
         }
 

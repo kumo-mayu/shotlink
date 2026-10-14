@@ -96,7 +96,7 @@ public class PhotoProcessorTests
         await p.CompleteAsync();
 
         Assert.Equal(["x"], _sink.Handled.Select(h => h.Decision.Content.Text));
-        Assert.Equal(2, _log.Count(l => l.Contains("broken.png") || l.Contains("never.png")));
+        Assert.True(2 == _log.Count(l => l.Contains("broken.png") || l.Contains("never.png")), string.Join(" / ", _log));
     }
 
     [Fact]
@@ -125,7 +125,7 @@ public class PhotoProcessorTests
         p.Enqueue("1.png");
         await p.CompleteAsync();
 
-        Assert.Equal(2, _log.Count);
+        Assert.True(2 == _log.Count, string.Join(" / ", _log));
         Assert.Contains(_log, l => l.Contains("a.example"));
         Assert.DoesNotContain(_log, l => l.Contains("secret-token-123") || l.Contains("ひみつ"));
     }

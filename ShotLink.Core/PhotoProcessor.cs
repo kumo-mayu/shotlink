@@ -31,6 +31,7 @@ public sealed class PhotoProcessor : IAsyncDisposable
     readonly Action<string> _log;
     readonly CancellationTokenSource _stop = new();
     readonly Task _loop;
+    int _pending;
 
     public PhotoProcessor(FileReadyWaiter waiter, IImageLoader loader, QrReader reader, QrDispatcher dispatcher,
         Func<DispatchOptions> options, IQrSink sink, Action<string> log)
@@ -45,7 +46,15 @@ public sealed class PhotoProcessor : IAsyncDisposable
         _loop = Task.Run(LoopAsync);
     }
 
-    public void Enqueue(string path) => _queue.Writer.TryWrite(path);
+    public void Enqueue(string path)
+    {
+        // 読み手が1人の行列は残りの数を数えられない（Reader.Count が NotSupportedException）。自分で数える
+        Interlocked.Increment(ref _pending);
+        if (!_queue.Writer.TryWrite(path))
+        {
+            Interlocked.Decrement(ref _pending);
+        }
+    }
 
     /// <summary>試験のため：今ある分を全部処理し終えたら終わる</summary>
     public async Task CompleteAsync()
@@ -86,7 +95,24 @@ public sealed class PhotoProcessor : IAsyncDisposable
                 // 1枚で落ちて見張り全体が止まらないように。何が起きたかはログで追う
                 _log($"写真の処理に失敗：{Path.GetFileName(path)}：{e.GetType().Name}：{e.Message}");
             }
+
+            if (Interlocked.Decrement(ref _pending) == 0)
+            {
+                ReturnMemory();
+            }
         }
+    }
+
+    /// <summary>
+    /// 画像に使ったメモリを Windows に返す（仕様書 3.3 [決定]）。8K を1枚読むと、.NET は画像の分（約 33 MB）を
+    /// 「また使うかもしれない」と持ち続け、待ち受け中の ShotLink だけの分が 19 MB から 51 MB のままになった。
+    /// 大きな配列は圧縮しない領域に置かれるので、圧縮を1回だけ指定して回収する。
+    /// 続けて撮っている間は次の写真ですぐ使うので、行列が空になったときだけ行う
+    /// </summary>
+    static void ReturnMemory()
+    {
+        System.Runtime.GCSettings.LargeObjectHeapCompactionMode = System.Runtime.GCLargeObjectHeapCompactionMode.CompactOnce;
+        GC.Collect(2, GCCollectionMode.Aggressive, blocking: true, compacting: true);
     }
 
     async Task ProcessAsync(string path, CancellationToken cancel)

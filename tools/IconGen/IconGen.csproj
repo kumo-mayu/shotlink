@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    exe のアイコン（ShotLink.App/ShotLink.ico）を、通知領域と同じ絵（IconArt.cs）から作る。
+    絵を変えたら、この道具を ShotLink.App/ShotLink.ico を書き出し先にして走らせ直し、コミットする
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\ShotLink.App\IconArt.cs" Link="IconArt.cs" />
+  </ItemGroup>
+
+</Project>
