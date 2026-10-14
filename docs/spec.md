@@ -182,6 +182,10 @@ VRChat の写真フォルダを見張り、新しく撮られた写真に QR コ
 - [決定] 配る zip は Chmonos と同じく、**タグを push すると GitHub Actions が組んで Releases に下書きとして置く**。公開はユーザーが押す
 - [決定] 最初は**コード署名なし**。初回に Windows の「発行元不明」の警告が出ることを README に書く
 - GitHub の Releases に zip（exe・README・LICENSE・THIRD-PARTY-NOTICES.txt）
+  - zip の README は `docs/booth/zip-README.txt`（`{version}` を埋める。【未定】が残っていると tag の組み立ては止まる）
+  - `THIRD-PARTY-NOTICES.txt` は exe に入る部品すべて（.NET の実行環境・Windows Forms・通知の部品・C#/WinRT・Windows SDK の定義・zxing-cpp・libzint）の許諾文。SDK や部品の版を上げたら `node tools/release/make-notices.mjs` で組み直す。組み立ては、告知の版と同梱する版が合わなければ止まる
+  - 版を出す手順：`Directory.Build.props` の `Version` を上げてコミット → tag `v<版>` を push（ユーザー）→ 下書きの中身を確かめて公開（ユーザー）
+  - [要確認] `Microsoft.Windows.SDK.NET.dll` は Windows SDK のライセンス条項（https://aka.ms/WinSDKLicenseURL）で配られている。.NET の Windows 向けのアプリには必ず入る物だが、条項の再配布の項を一度読む
 - BOOTH：単独の無料商品として同じ zip を置く
 - Paramroom：Paramroom の `make-release.sh` が ShotLink の最新の Releases から exe を取ってきて、Paramroom の zip に入れる。Paramroom の版を出すときに、その時点の最新を入れ直す（ShotLink を更新するたびに Paramroom を差し替えはしない）。同梱の README に「最新版は ShotLink の商品ページへ」と書く
 - 名前：公開前に J-PlatPat で「ShotLink」を引く [要確認：Claude が調べて報告し、判断はユーザー]。VRChat の名前の使い方（「for VRChat」などの書き方）も、VRChat の商標のガイドラインで確かめる [要確認]

@@ -1,0 +1,131 @@
+# 配る zip を組む。tag（v1.0.0 など）を push すると、Releases に下書きとして置く（仕様書 11章 [決定]）。
+#
+# GitHub と BOOTH・Paramroom の同梱で同じ zip を配る（ここで1回だけ組んだ物）。署名の無い exe は、
+# SmartScreen が exe ごとの評判で判定するので、手元で組み直した物を配らない（Chmonos で、組み直した物が別の PC で止められた）。
+# 下書きにするのは、公開する前に中身を見て確かめるため。公開は人が Releases の画面で押す。
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  # 試しに組むだけのとき（下書きは作らず、成果物として残す）
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# 同じ tag の実行を重ねない（重なると、2つが別々の zip を組んで取り合う）
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      # その tag の Releases が既にあれば、組む前に止める。組み直した zip は別の exe になり、配った物と取り違える
+      - name: 既に配った tag でないか確かめる
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # 「無い」と確かめられたときだけ進む。認証や通信の失敗まで「無い」と読むと、配った物と別の zip を組んでしまう
+          $answer = gh release view '${{ github.ref_name }}' --repo '${{ github.repository }}' 2>&1 | Out-String
+          if ($LASTEXITCODE -eq 0) { throw "tag ${{ github.ref_name }} の Releases は既にあります。組み直さず、Releases にある zip を使ってください" }
+          if ($answer -notmatch 'release not found') { throw "Releases があるかを確かめられませんでした。組まずに止めます：$answer" }
+          $global:LASTEXITCODE = 0
+
+      - uses: actions/checkout@v7
+
+      # SDK の版は global.json で固める（後日組み直しても同じ SDK で組むため）
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      # global.json は手元の SDK が上がっても組めるよう新しい機能帯へ進むのを許している。指定の版で組めるときだけ進む
+      - name: SDK の版を確かめる
+        run: |
+          $want = (Get-Content global.json -Raw | ConvertFrom-Json).sdk.version
+          $used = dotnet --version
+          if ($used -ne $want) { throw "global.json の SDK（$want）ではなく $used で組もうとしています" }
+
+      - name: 版をそろえる
+        id: version
+        run: |
+          $version = ([xml](Get-Content Directory.Build.props)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+          if (-not $version) { throw 'Directory.Build.props に Version が無い' }
+          # tag と exe の版が食い違わないようにする（設定の窓の版と Releases の名前がずれる）
+          if ('${{ github.ref_type }}' -eq 'tag' -and '${{ github.ref_name }}' -ne "v$version") {
+            throw "tag（${{ github.ref_name }}）と Directory.Build.props の版（v$version）が違う"
+          }
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+      # 配る物と同じコミットの試験が通ったときだけ組む。試験は通信しない決まり（CLAUDE.md）なので、ここでも走らせられる
+      - name: 試験
+        run: dotnet test -c Release
+
+      - name: 組む
+        run: dotnet publish ShotLink.App -p:PublishProfile=win-x64 -o out/ShotLink-v${{ steps.version.outputs.version }}
+
+      - name: 説明を添えて確かめる
+        run: |
+          $dir = 'out/ShotLink-v${{ steps.version.outputs.version }}'
+          # メモ帳でも崩れないよう、文書の改行は CRLF にする
+          function Put($to, $text) {
+            [IO.File]::WriteAllText("$dir/$to", ($text -replace "`r?`n", "`r`n"), [Text.UTF8Encoding]::new($false))
+          }
+
+          $readme = Get-Content docs/booth/zip-README.txt -Raw -Encoding utf8
+          # 決まっていない所が残ったまま配らない（BOOTH の URL など）
+          if ('${{ github.ref_type }}' -eq 'tag' -and $readme.Contains('【未定')) { throw 'docs/booth/zip-README.txt に【未定】が残っている' }
+          $readme = $readme.Replace('{version}', '${{ steps.version.outputs.version }}')
+          if ($readme.Contains('{')) { throw 'docs/booth/zip-README.txt に埋めていない {…} が残っている' }
+          Put 'README.txt' $readme
+          Put 'LICENSE' (Get-Content LICENSE -Raw -Encoding utf8)
+          Put 'THIRD-PARTY-NOTICES.txt' (Get-Content THIRD-PARTY-NOTICES.txt -Raw -Encoding utf8)
+
+          $expected = @('ShotLink.exe', 'README.txt', 'LICENSE', 'THIRD-PARTY-NOTICES.txt')
+          $missing = @($expected | Where-Object { -not (Test-Path "$dir/$_") })
+          if ($missing.Count -gt 0) { throw "足りない: $($missing -join ', ')" }
+          # pdb やネイティブの DLL が並ぶのは設定が崩れたしるし（1ファイルにまとめていない）
+          $extra = @(Get-ChildItem $dir -File | Where-Object { $_.Name -notin $expected })
+          if ($extra.Count -gt 0) { throw "余分な物: $($extra.Name -join ', ')" }
+
+          # exe は .NET の実行環境と Windows Forms を含むので、その許諾文を THIRD-PARTY-NOTICES.txt に添える。
+          # SDK の版を上げると実行環境の版も変わるので、告知が同梱する版と合っているかを見る（合わなければ tools/release/make-notices.mjs）
+          $deps = Get-ChildItem ShotLink.App/obj/Release -Recurse -Filter ShotLink.deps.json | Where-Object FullName -match 'win-x64' | Select-Object -First 1
+          $notices = Get-Content "$dir/THIRD-PARTY-NOTICES.txt" -Raw -Encoding utf8
+          foreach ($pair in @(@('Microsoft\.NETCore\.App', '.NET Runtime'), @('Microsoft\.WindowsDesktop\.App', 'Windows Desktop Runtime'))) {
+            $found = Select-String -LiteralPath $deps.FullName -Pattern "runtimepack\.$($pair[0])\.Runtime\.win-x64/([0-9.]+)" | Select-Object -First 1
+            if (-not $found) { throw "同梱した $($pair[1]) の版が分からない（ShotLink.deps.json に runtimepack の行が無い）" }
+            $v = $found.Matches[0].Groups[1].Value
+            if (-not $notices.Contains("$($pair[1]) $v")) { throw "THIRD-PARTY-NOTICES.txt に、同梱する $($pair[1])（$v）の告知が無い" }
+            "同梱する $($pair[1])：$v（告知あり）"
+          }
+
+      - name: zip にする
+        id: zip
+        run: |
+          $name = 'ShotLink-v${{ steps.version.outputs.version }}'
+          # 展開すると1つのフォルダにまとまるよう、フォルダごと入れる
+          Compress-Archive -Path "out/$name" -DestinationPath "out/$name.zip"
+          $hash = (Get-FileHash "out/$name.zip" -Algorithm SHA256).Hash
+          "$hash  $name.zip" | Set-Content "out/$name.zip.sha256" -Encoding ascii
+          "SHA256: $hash" >> $env:GITHUB_STEP_SUMMARY
+          "name=$name" >> $env:GITHUB_OUTPUT
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.zip.outputs.name }}
+          path: |
+            out/${{ steps.zip.outputs.name }}.zip
+            out/${{ steps.zip.outputs.name }}.zip.sha256
+
+      - name: Releases に下書きを置く
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create '${{ github.ref_name }}' 'out/${{ steps.zip.outputs.name }}.zip' 'out/${{ steps.zip.outputs.name }}.zip.sha256' --draft --title 'ShotLink ${{ github.ref_name }}' --notes '（下書き：公開の前に書く）'
