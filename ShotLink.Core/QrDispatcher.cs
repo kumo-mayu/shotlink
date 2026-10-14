@@ -7,7 +7,7 @@ public enum QrAction
     /// <summary>ブラウザで開いた。通知も出す</summary>
     Opened,
 
-    /// <summary>URL だが開かなかった（直接開くが OFF か、回数の上限か、まとめたとき）。通知のクリックで開く</summary>
+    /// <summary>URL だが開かなかった（直接開くが OFF か、まとめたとき）。通知のクリックで開く</summary>
     NotifyToOpen,
 
     /// <summary>URL ではない。通知のクリックでコピーする</summary>
@@ -17,8 +17,7 @@ public enum QrAction
     HistoryOnly,
 }
 
-/// <param name="RateLimited">直接開くつもりだったのに、回数の上限で開かなかった</param>
-public sealed record QrDecision(QrContent Content, QrAction Action, bool RateLimited = false);
+public sealed record QrDecision(QrContent Content, QrAction Action);
 
 /// <summary>1枚の写真から決めたこと。位置の順に並ぶ</summary>
 /// <param name="Summarized">4件以上あったので、通知を1件にまとめる（仕様書 3.5）</param>
@@ -41,11 +40,10 @@ public sealed class QrBatch(IReadOnlyList<QrDecision> decisions, bool summarized
 public sealed record DispatchOptions(bool OpenDirectly, bool NotifyNonUrl, bool OpenWhenSummarized = false);
 
 /// <summary>1枚の写真から読めた中身ごとに、開く・知らせる・黙るを決める（仕様書 3章の流れ）</summary>
-public sealed class QrDispatcher(RecentContentFilter recent, OpenRateLimiter limiter)
+public sealed class QrDispatcher(RecentContentFilter recent)
 {
     public static QrDispatcher CreateDefault(IClock clock) => new(
-        new RecentContentFilter(clock, QrPolicy.DuplicateWindow),
-        new OpenRateLimiter(clock, QrPolicy.OpenLimit, QrPolicy.OpenLimitWindow));
+        new RecentContentFilter(clock, QrPolicy.DuplicateWindow));
 
     /// <summary>
     /// 中身は写真の中の位置の順に渡す（直接開く順・通知の順になる）。
@@ -61,8 +59,7 @@ public sealed class QrDispatcher(RecentContentFilter recent, OpenRateLimiter lim
         var decisions = fresh.Select(content => content.Kind switch
         {
             QrKind.WebUrl when !mayOpen => new QrDecision(content, QrAction.NotifyToOpen),
-            QrKind.WebUrl when limiter.TryTake() => new QrDecision(content, QrAction.Opened),
-            QrKind.WebUrl => new QrDecision(content, QrAction.NotifyToOpen, RateLimited: true),
+            QrKind.WebUrl => new QrDecision(content, QrAction.Opened),
             _ when options.NotifyNonUrl => new QrDecision(content, QrAction.NotifyToCopy),
             _ => new QrDecision(content, QrAction.HistoryOnly),
         }).ToList();

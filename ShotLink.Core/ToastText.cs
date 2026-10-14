@@ -18,7 +18,6 @@ public sealed record ToastText(string Title, string Body, string Footer)
         return decision.Action switch
         {
             QrAction.Opened => new(c.Host!, body, "ブラウザで開きました"),
-            QrAction.NotifyToOpen when decision.RateLimited => new(c.Host!, body, "続けて開くのは1分に3件までです。クリックで開きます"),
             QrAction.NotifyToOpen => new(c.Host!, body, "クリックで開きます"),
             _ => new("QR を読みました", body, "クリックでコピーします"),
         };
@@ -36,9 +35,18 @@ public sealed record ToastText(string Title, string Body, string Footer)
     }
 
     /// <summary>メニューの「最近読んだ QR」の1行。改行をつぶし、長ければ切る</summary>
-    public static string MenuLabel(string text, int limit = 60) =>
+    public static string MenuLabel(string text, int limit = 60)
+    {
+        // URL はホスト名（xn-- のまま）を先に出す。原文だけだと、見た目の似た偽のドメインや、
+        // https://長い文字@本当のホスト/ の本当のホストが、省略で隠れる（Codex の点検 2026-10-14）
+        var content = QrClassifier.Classify(text);
+        var label = content.Host is { } host
+            ? $"{host}｜{Shorten(Flatten(text), Math.Max(10, limit - host.Length - 1))}"
+            : Shorten(Flatten(text), limit);
+
         // メニューの & は次の文字の下線（アクセスキー）になる
-        Shorten(Flatten(text), limit).Replace("&", "&&");
+        return label.Replace("&", "&&");
+    }
 
     /// <summary>改行とタブをつぶして1行にする</summary>
     public static string Flatten(string text) =>

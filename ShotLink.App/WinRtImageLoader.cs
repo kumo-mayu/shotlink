@@ -9,6 +9,8 @@ namespace ShotLink.App;
 /// </summary>
 sealed class WinRtImageLoader(Action<string> log) : IImageLoader
 {
+    const long MaxPixels = 100_000_000;
+
     public GrayImage? TryLoad(string path)
     {
         try
@@ -17,6 +19,14 @@ sealed class WinRtImageLoader(Action<string> log) : IImageLoader
             using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
             using var stream = file.AsRandomAccessStream();
             var decoder = BitmapDecoder.CreateAsync(stream).AsTask().GetAwaiter().GetResult();
+            // 展開すると何 GB にもなる画像（小さな PNG に巨大な寸法を書いた物）を読まない。
+            // VRChat の 8K は 3300 万画素。1 億画素あれば、ほかのスクショ道具の大きな写真も収まる
+            if ((long)decoder.PixelWidth * decoder.PixelHeight > MaxPixels)
+            {
+                log($"大きすぎるので読まない：{Path.GetFileName(path)}：{decoder.PixelWidth}×{decoder.PixelHeight}");
+                return null;
+            }
+
             var width = (int)decoder.PixelWidth;
             var height = (int)decoder.PixelHeight;
 

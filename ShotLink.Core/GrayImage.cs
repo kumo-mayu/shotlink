@@ -10,7 +10,7 @@ public sealed class GrayImage
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(width, 1);
         ArgumentOutOfRangeException.ThrowIfLessThan(height, 1);
-        if (pixels.Length != width * height)
+        if (pixels.Length != (long)width * height)
         {
             throw new ArgumentException($"画素の数（{pixels.Length}）が {width}×{height} と合わない", nameof(pixels));
         }

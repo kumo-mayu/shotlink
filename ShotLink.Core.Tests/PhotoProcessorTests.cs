@@ -136,6 +136,40 @@ public class PhotoProcessorTests
         Assert.DoesNotContain(_log, l => l.Contains("secret-token-123") || l.Contains("ひみつ"));
     }
 
+    [Fact]
+    public async Task 読めなかった写真を知らせる()
+    {
+        var p = Create(new() { ["broken.png"] = null, ["ok.png"] = Photo("x") });
+        var failed = new List<string>();
+        p.PhotoFailed += failed.Add;
+        p.Enqueue("broken.png");
+        p.Enqueue("never.png");
+        p.Enqueue("ok.png");
+        await p.CompleteAsync();
+        Assert.Equal(["broken.png", "never.png"], failed);
+    }
+
+    // Codex の点検 2026-10-14：ログが書けないと、失敗を書く catch の中でまた投げて、処理の繰り返しごと止まっていた
+    [Fact]
+    public async Task ログが投げても次の写真へ進む()
+    {
+        var p = new PhotoProcessor(
+            new FileReadyWaiter(new ReadyProbe(), (_, _) => Task.CompletedTask),
+            new MapLoader(new() { ["broken.png"] = null, ["1.png"] = Photo("a") }),
+            new QrReader(),
+            QrDispatcher.CreateDefault(_clock),
+            () => _options,
+            _sink,
+            _ => throw new UnauthorizedAccessException("試験のための失敗"));
+        Exception? stopped = null;
+        p.Stopped += e => stopped = e;
+        p.Enqueue("broken.png");
+        p.Enqueue("1.png");
+        await p.CompleteAsync();
+        Assert.Equal(["a"], _sink.Handled.Select(h => h.Decision.Content.Text));
+        Assert.Null(stopped);
+    }
+
     sealed class ThrowOnceSink(Action onCall) : IQrSink
     {
         bool _thrown;

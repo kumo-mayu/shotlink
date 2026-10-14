@@ -45,7 +45,20 @@ public sealed class PhotoProcessor : IAsyncDisposable
         _sink = sink;
         _log = log;
         _loop = Task.Run(LoopAsync);
+        _loop.ContinueWith(t => Stopped?.Invoke(t.Exception!.GetBaseException()), TaskContinuationOptions.OnlyOnFaulted);
     }
+
+    /// <summary>
+    /// 写真を読めなかった（書き込みが終わらない・画像として読めない・途中で失敗した）。裏のスレッドから呼ばれる。
+    /// 見張りの「見た」の控えから外し、同じ場所に置き直されたら読み直せるようにするため
+    /// </summary>
+    public event Action<string>? PhotoFailed;
+
+    /// <summary>
+    /// 処理の繰り返しそのものが止まった。ここに来たら、以後の写真は読まれない。
+    /// 起きないはずだが、起きたときに「見張っています」のまま黙らないよう、知らせる口を残す
+    /// </summary>
+    public event Action<Exception>? Stopped;
 
     public void Enqueue(string path)
     {
@@ -87,22 +100,51 @@ public sealed class PhotoProcessor : IAsyncDisposable
             {
                 await ProcessAsync(path, _stop.Token);
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException) when (_stop.IsCancellationRequested)
             {
                 throw;
             }
             catch (Exception e)
             {
-                // 1枚で落ちて見張り全体が止まらないように。何が起きたかはログで追う
-                _log($"写真の処理に失敗：{Path.GetFileName(path)}：{e.GetType().Name}：{e.Message}");
+                // 1枚で落ちて見張り全体が止まらないように。何が起きたかはログで追う。
+                // 例外の文は書かない：渡した先の例外には QR の中身が入りうる（ログはホスト名まで。仕様書 7章）
+                Log($"写真の処理に失敗：{Path.GetFileName(path)}：{e.GetType().Name}：{e.TargetSite?.Name}");
+                Fail(path);
             }
 
             if (Interlocked.Decrement(ref _pending) == 0)
             {
                 ReturnMemory();
                 using var self = System.Diagnostics.Process.GetCurrentProcess();
-                _log($"メモリ：.NET {GC.GetTotalMemory(false) / 1_048_576} MB・全体 {self.PrivateMemorySize64 / 1_048_576} MB");
+                Log($"メモリ：.NET {GC.GetTotalMemory(false) / 1_048_576} MB・全体 {self.PrivateMemorySize64 / 1_048_576} MB");
             }
+        }
+    }
+
+    /// <summary>
+    /// ログが書けない（ログのファイルが読み取り専用・権限が無い）ことで、写真の処理を止めない。
+    /// 失敗を書くための catch の中でまた投げると、繰り返しごと止まり、以後の写真が黙って読まれなくなる
+    /// </summary>
+    void Log(string message)
+    {
+        try
+        {
+            _log(message);
+        }
+        catch (Exception)
+        {
+        }
+    }
+
+    void Fail(string path)
+    {
+        try
+        {
+            PhotoFailed?.Invoke(path);
+        }
+        catch (Exception)
+        {
+            // 知らせる先の失敗で繰り返しを止めない
         }
     }
 
@@ -132,14 +174,16 @@ public sealed class PhotoProcessor : IAsyncDisposable
     {
         if (!await _waiter.WaitAsync(path, cancel))
         {
-            _log($"書き込みが終わらないので読まない：{Path.GetFileName(path)}");
+            Log($"書き込みが終わらないので読まない：{Path.GetFileName(path)}");
+            Fail(path);
             return;
         }
 
         var texts = Read(path);
         if (texts is null)
         {
-            _log($"画像として読めない：{Path.GetFileName(path)}");
+            Log($"画像として読めない：{Path.GetFileName(path)}");
+            Fail(path);
             return;
         }
 
@@ -147,14 +191,14 @@ public sealed class PhotoProcessor : IAsyncDisposable
         foreach (var decision in batch)
         {
             // ログに中身は書かない。URL ならホスト名まで（仕様書 7章）
-            _log($"QR：{decision.Action}：{decision.Content.Host ?? "（URL ではない）"}：{Path.GetFileName(path)}");
+            Log($"QR：{decision.Action}：{decision.Content.Host ?? "（URL ではない）"}：{Path.GetFileName(path)}");
         }
 
         if (batch.Count > 0)
         {
             if (batch.Summarized)
             {
-                _log($"QR が {batch.Count} 件あったので通知をまとめる：{Path.GetFileName(path)}");
+                Log($"QR が {batch.Count} 件あったので通知をまとめる：{Path.GetFileName(path)}");
             }
 
             _sink.Handle(batch, path);

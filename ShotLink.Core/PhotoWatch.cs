@@ -61,9 +61,10 @@ public sealed class PhotoWatch : IDisposable
     }
 
     /// <summary>見張る場所を入れ替える。前からあるフォルダは見張りを続ける（その間の写真を取りこぼさない）</summary>
-    public void SetTargets(IEnumerable<WatchTarget> targets)
+    /// <returns>場所として読めないので外した物（手で直した settings.json の壊れた行など）</returns>
+    public IReadOnlyList<WatchTarget> SetTargets(IEnumerable<WatchTarget> targets)
     {
-        var wanted = Deduplicate(targets);
+        var wanted = Deduplicate(targets, out var rejected);
         lock (_lock)
         {
             foreach (var old in _watchers.Keys.Except(wanted).ToArray())
@@ -79,6 +80,19 @@ public sealed class PhotoWatch : IDisposable
         }
 
         StateChanged?.Invoke();
+        return rejected;
+    }
+
+    /// <summary>
+    /// 読めなかった写真を「見た」の控えから外す。同じ場所に置き直されたら読み直せるように。
+    /// 外さないと、書き込みが 10 秒で終わらなかった写真や壊れていた写真は、ShotLink を起動し直すまで二度と読まない
+    /// </summary>
+    public void Forget(string path)
+    {
+        lock (_lock)
+        {
+            _seen.Remove(Path.GetFullPath(path));
+        }
     }
 
     /// <summary>無かったフォルダができていないかを見る。App が数秒ごとに呼ぶ</summary>
@@ -137,7 +151,18 @@ public sealed class PhotoWatch : IDisposable
 
     IFolderWatcher? Attach(WatchTarget target)
     {
-        var watcher = _factory.TryCreate(target);
+        IFolderWatcher? watcher;
+        try
+        {
+            watcher = _factory.TryCreate(target);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            // 見られないフォルダ（権限が無い・在るかを確かめた直後に消えた）は「無い」として扱い、5 秒ごとに見直す。
+            // ここで投げると、ほかの正しいフォルダの見張りまで始まらない
+            return null;
+        }
+
         if (watcher is null)
         {
             return null;
@@ -212,11 +237,25 @@ public sealed class PhotoWatch : IDisposable
         StateChanged?.Invoke();
     }
 
-    static List<WatchTarget> Deduplicate(IEnumerable<WatchTarget> targets)
+    static List<WatchTarget> Deduplicate(IEnumerable<WatchTarget> targets, out List<WatchTarget> rejected)
     {
+        var valid = new List<WatchTarget>();
+        rejected = [];
+        foreach (var t in targets)
+        {
+            try
+            {
+                valid.Add(t with { Path = Path.TrimEndingDirectorySeparator(Path.GetFullPath(t.Path)) });
+            }
+            catch (Exception e) when (e is ArgumentException or NotSupportedException or PathTooLongException)
+            {
+                // 使えない文字の入った場所など。1つのために全部の見張りを止めない
+                rejected.Add(t);
+            }
+        }
+
         // 同じフォルダが2回指定されたら1つにまとめる（サブフォルダを含める方を残す）
-        return targets
-            .Select(t => t with { Path = Path.TrimEndingDirectorySeparator(Path.GetFullPath(t.Path)) })
+        return valid
             .GroupBy(t => t.Path, StringComparer.OrdinalIgnoreCase)
             .Select(g => g.OrderByDescending(t => t.IncludeSubfolders).First())
             .ToList();

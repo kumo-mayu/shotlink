@@ -36,13 +36,14 @@ sealed class QrListForm : Form
         MinimumSize = new Size(480, 260);
         Padding = new Padding(10);
 
-        _list.Columns.Add("中身", 440);
-        _list.Columns.Add("種類", 80);
+        _list.Columns.Add("行き先", 160);
+        _list.Columns.Add("中身", 360);
         _list.Columns.Add("読んだ時刻", 140);
         foreach (var entry in entries)
         {
-            var isUrl = QrClassifier.Classify(entry.Text).Kind == QrKind.WebUrl;
-            var item = new ListViewItem([ToastText.Flatten(entry.Text), isUrl ? "URL" : "文字列", entry.ReadAt.LocalDateTime.ToString("M/d HH:mm:ss")])
+            // URL は開く先のホスト名（xn-- のまま）を別の列に出す。中身の原文だけだと、見た目の似た偽のドメインに気づけない
+            var host = QrClassifier.Classify(entry.Text).Host;
+            var item = new ListViewItem([host ?? "（文字列）", ToastText.Flatten(entry.Text), entry.ReadAt.LocalDateTime.ToString("M/d HH:mm:ss")])
             {
                 Tag = entry.Text,
                 ToolTipText = entry.Text,

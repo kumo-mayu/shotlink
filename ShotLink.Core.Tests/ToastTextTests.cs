@@ -4,7 +4,7 @@ namespace ShotLink.Core.Tests;
 
 public class ToastTextTests
 {
-    static QrDecision D(string text, QrAction action, bool limited = false) => new(QrClassifier.Classify(text), action, limited);
+    static QrDecision D(string text, QrAction action) => new(QrClassifier.Classify(text), action);
 
     [Fact]
     public void URL_は一行目にホスト名()
@@ -23,10 +23,10 @@ public class ToastTextTests
     }
 
     [Fact]
-    public void 開いたとき_上限で開かなかったとき_文字列のときで一言が違う()
+    public void 開いたとき_開かなかったとき_文字列のときで一言が違う()
     {
         Assert.Equal("ブラウザで開きました", ToastText.For(D("https://a.example/", QrAction.Opened)).Footer);
-        Assert.Contains("1分に3件", ToastText.For(D("https://a.example/", QrAction.NotifyToOpen, limited: true)).Footer);
+        Assert.Equal("クリックで開きます", ToastText.For(D("https://a.example/", QrAction.NotifyToOpen)).Footer);
 
         var text = ToastText.For(D("こんにちは", QrAction.NotifyToCopy));
         Assert.Equal("QR を読みました", text.Title);
@@ -42,16 +42,45 @@ public class ToastTextTests
     }
 
     [Fact]
+    public void メニューの行は_URL_ならホスト名を先に出す()
+    {
+        // Codex の点検 2026-10-14：原文だけだと、偽のドメインや、ユーザー情報の後ろの本当のホストが見えない
+        Assert.StartsWith("xn--", ToastText.MenuLabel("https://аpple.com/"));
+        var label = ToastText.MenuLabel("https://" + new string('a', 80) + "@evil.example/");
+        Assert.StartsWith("evil.example｜", label);
+        Assert.True(label.Length <= 60);
+    }
+
+    [Fact]
     public void メニューの行は改行をつぶし_アンパサンドをそのまま見せる()
     {
         Assert.Equal("a b c", ToastText.MenuLabel("a\r\nb\tc"));
-        Assert.Equal("https://a.example/?x=1&&y=2", ToastText.MenuLabel("https://a.example/?x=1&y=2"));
+        Assert.Equal("a.example｜https://a.example/?x=1&&y=2", ToastText.MenuLabel("https://a.example/?x=1&y=2"));
         Assert.Equal(60, ToastText.MenuLabel(new string('x', 100)).Length);
     }
 }
 
 public class LogWriterTests
 {
+    [Fact]
+    public void 書けないログでも投げない()
+    {
+        using var dir = new TempDir();
+        var clock = new FakeClock();
+        var log = new LogWriter(dir.Path, clock);
+        var file = Path.Combine(dir.Path, $"{clock.Now:yyyy-MM-dd}.log");
+        File.WriteAllText(file, "");
+        File.SetAttributes(file, FileAttributes.ReadOnly);
+        try
+        {
+            log.Write("x");
+        }
+        finally
+        {
+            File.SetAttributes(file, FileAttributes.Normal);
+        }
+    }
+
     [Fact]
     public void 日ごとのファイルに書き_七日より古いものを消す()
     {
@@ -95,6 +124,6 @@ public class ToastTextBatchTests
         var dispatcher = QrDispatcher.CreateDefault(new FakeClock());
         var batch = dispatcher.Decide(Enumerable.Range(1, 6).Select(i => $"https://a.example/{i}"),
             new DispatchOptions(OpenDirectly: true, NotifyNonUrl: true, OpenWhenSummarized: true));
-        Assert.Equal("3 件をブラウザで開きました。クリックで一覧を開きます", ToastText.ForBatch(batch).Footer);
+        Assert.Equal("6 件をブラウザで開きました。クリックで一覧を開きます", ToastText.ForBatch(batch).Footer);
     }
 }

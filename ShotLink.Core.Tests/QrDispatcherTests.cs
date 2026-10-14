@@ -17,7 +17,6 @@ public class QrDispatcherTests
     {
         var d = Assert.Single(_dispatcher.Decide(["https://a.example/"], NoOpen));
         Assert.Equal(QrAction.NotifyToOpen, d.Action);
-        Assert.False(d.RateLimited);
     }
 
     [Fact]
@@ -90,36 +89,16 @@ public class QrDispatcherTests
     }
 
     [Fact]
-    public void 直接開くのは一分に三件まで_超えた分は通知だけ()
+    public void 直接開くに回数の上限は無い()
     {
-        // 1枚に 4 件以上だとまとめる側（QrDispatcherSummarizeTests）になるので、写真 2 枚に分ける
-        var first = _dispatcher.Decide(["https://a.example/1", "https://a.example/2", "https://a.example/3"], Open);
-        var second = _dispatcher.Decide(["https://a.example/4", "https://a.example/5"], Open);
-        var ds = first.Concat(second).ToList();
-
-        Assert.Equal(
-            [QrAction.Opened, QrAction.Opened, QrAction.Opened, QrAction.NotifyToOpen, QrAction.NotifyToOpen],
-            ds.Select(d => d.Action));
-        Assert.Equal([false, false, false, true, true], ds.Select(d => d.RateLimited));
+        // 上限は 2026-10-14 に外した（ユーザー判断。QrPolicy の説明）。続けて撮った写真の URL はどれも開く
+        for (var i = 0; i < 10; i++)
+        {
+            var d = Assert.Single(_dispatcher.Decide([$"https://a.example/{i}"], Open));
+            Assert.Equal(QrAction.Opened, d.Action);
+        }
     }
 
-    [Fact]
-    public void 一分たてばまた開ける()
-    {
-        _dispatcher.Decide(["https://a.example/1", "https://a.example/2", "https://a.example/3"], Open);
-        _clock.Advance(TimeSpan.FromSeconds(59));
-        Assert.Equal(QrAction.NotifyToOpen, Assert.Single(_dispatcher.Decide(["https://a.example/4"], Open)).Action);
-        _clock.Advance(TimeSpan.FromSeconds(1));
-        Assert.Equal(QrAction.Opened, Assert.Single(_dispatcher.Decide(["https://a.example/5"], Open)).Action);
-    }
-
-    [Fact]
-    public void 直接開くが_OFF_のあいだは上限を使わない()
-    {
-        _dispatcher.Decide(["https://a.example/1", "https://a.example/2", "https://a.example/3"], NoOpen);
-        var ds = _dispatcher.Decide(["https://a.example/4", "https://a.example/5", "https://a.example/6"], Open);
-        Assert.All(ds, d => Assert.Equal(QrAction.Opened, d.Action));
-    }
 }
 
 // 仕様書 3.5：1枚に 4 件以上あれば通知を1件にまとめる
@@ -146,25 +125,14 @@ public class QrDispatcherSummarizeTests
         var batch = _dispatcher.Decide(Urls(4), Open);
         Assert.True(batch.Summarized);
         Assert.All(batch, d => Assert.Equal(QrAction.NotifyToOpen, d.Action));
-        Assert.All(batch, d => Assert.False(d.RateLimited));
     }
 
     [Fact]
-    public void まとめたときも開く設定なら_位置の順に上限まで開く()
+    public void まとめたときも開く設定なら全部開く()
     {
         var batch = _dispatcher.Decide(Urls(5), Open with { OpenWhenSummarized = true });
         Assert.True(batch.Summarized);
-        Assert.Equal(
-            [QrAction.Opened, QrAction.Opened, QrAction.Opened, QrAction.NotifyToOpen, QrAction.NotifyToOpen],
-            batch.Select(d => d.Action));
-    }
-
-    [Fact]
-    public void まとめたときに開かなかった分は上限を使わない()
-    {
-        _dispatcher.Decide(Urls(10, "a"), Open);
-        var next = _dispatcher.Decide(Urls(3, "b"), Open);
-        Assert.All(next, d => Assert.Equal(QrAction.Opened, d.Action));
+        Assert.All(batch, d => Assert.Equal(QrAction.Opened, d.Action));
     }
 
     [Fact]

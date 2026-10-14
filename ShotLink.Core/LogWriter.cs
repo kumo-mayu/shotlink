@@ -33,9 +33,9 @@ public sealed class LogWriter
             {
                 File.AppendAllText(Path.Combine(_folder, $"{now:yyyy-MM-dd}.log"), line);
             }
-            catch (IOException)
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException or System.Security.SecurityException)
             {
-                // ログが書けないことで見張りを止めない
+                // ログが書けないことで見張りを止めない（読み取り専用にされた・権限が無い・ディスクが一杯）
             }
         }
     }

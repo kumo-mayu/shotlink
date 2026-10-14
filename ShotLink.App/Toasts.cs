@@ -71,6 +71,19 @@ sealed class Toasts : IDisposable
     /// <summary>Windows への通知の登録を消す（仕様書 8章。exe を消す前に押してもらう）</summary>
     public static void Unregister() => ToastNotificationManagerCompat.Uninstall();
 
+    /// <summary>出した通知を通知センターから全部消す</summary>
+    public static void ClearAll()
+    {
+        try
+        {
+            ToastNotificationManagerCompat.History.Clear();
+        }
+        catch (Exception)
+        {
+            // 通知の仕組みが使えない Windows でも終了は続ける
+        }
+    }
+
     public void Dispose() => ToastNotificationManagerCompat.OnActivated -= OnActivated;
 
     void Show(ToastKind kind, string payload, string title, string body, string footer)

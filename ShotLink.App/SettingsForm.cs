@@ -13,7 +13,7 @@ sealed class SettingsForm : Form
     readonly Action _clearHistory;
 
     readonly CheckBox _openDirectly = new() { Text = "URL を直接ブラウザで開く", AutoSize = true };
-    readonly CheckBox _openWhenSummarized = new() { Text = "1枚に 4 件以上あって通知をまとめたときも開く", AutoSize = true, Margin = new Padding(20, 0, 3, 3) };
+    readonly CheckBox _openWhenSummarized = new() { Text = "1枚に 4 件以上あって通知をまとめたときも、全部開く", AutoSize = true, Margin = new Padding(20, 0, 3, 3) };
     readonly CheckBox _notifyNonUrl = new() { Text = "URL 以外の QR も知らせる", AutoSize = true };
     readonly CheckBox _playSound = new() { Text = "通知の音を鳴らす", AutoSize = true };
     readonly CheckBox _watchVrchat = new() { Text = "VRChat の写真フォルダを見張る", AutoSize = true };
@@ -93,6 +93,7 @@ sealed class SettingsForm : Form
         folderButtons.Controls.Add(remove);
         watch.Controls.Add(folderButtons);
         watch.Controls.Add(Note("ダウンロードなど、ほかの人の画像が入るフォルダを選ぶと、その画像の QR も読みます。"));
+        watch.Controls.Add(Note("ネットワーク上のフォルダを選ぶと、ShotLink はそこへアクセスします。"));
         root.Controls.Add(watch.Parent!);
 
         // ---- そのほか ----

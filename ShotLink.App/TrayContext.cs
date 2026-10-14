@@ -27,6 +27,8 @@ sealed class TrayContext : ApplicationContext, IQrSink
     SettingsForm? _settingsForm;
     QrListForm? _listForm;
     bool _notificationsBlocked;
+    bool _processorStopped;
+    bool _historySaveFailed;
 
     public TrayContext(AppServices app, SingleInstance instance)
     {
@@ -43,6 +45,16 @@ sealed class TrayContext : ApplicationContext, IQrSink
             QrDispatcher.CreateDefault(SystemClock.Instance), () => Volatile.Read(ref _settings).ToDispatchOptions(), this, app.Log.Write);
 
         _watch = new PhotoWatch(new FileSystemFolderWatcherFactory(), SystemClock.Instance);
+        // 読めなかった写真は「見た」の控えから外し、置き直されたら読み直す
+        _processor.PhotoFailed += _watch.Forget;
+        _processor.Stopped += e => _ui.Post(_ =>
+        {
+            _processorStopped = true;
+            app.Log.Write($"写真の処理が止まった：{e.GetType().Name}");
+            _toasts.ShowSettingsHint("写真の読み取りが止まりました", "ShotLink を終了して、起動し直してください");
+            UpdateState();
+        }, null);
+
         _watch.PhotoAppeared += path =>
         {
             app.Log.Write($"写真：{Path.GetFileName(path)}");
@@ -71,13 +83,8 @@ sealed class TrayContext : ApplicationContext, IQrSink
     {
         _ui.Post(_ =>
         {
-            // 履歴は新しい物を先頭に足すので、位置の順の最後から足す。メニューと一覧で写真の中の順に並ぶ
-            var now = DateTimeOffset.Now;
-            foreach (var decision in batch.Reverse())
-            {
-                _app.History.Add(new HistoryEntry(decision.Content.Text, now, Path.GetFileName(photo)));
-            }
-
+            // 開く・知らせるを先に行い、履歴はそのあと。履歴が保存できない（ディスクが一杯など）ときに、
+            // その写真の通知まで出なくなるのを避ける（Codex の点検 2026-10-14）
             if (batch.Summarized)
             {
                 foreach (var decision in batch.Where(d => d.Action == QrAction.Opened))
@@ -86,14 +93,40 @@ sealed class TrayContext : ApplicationContext, IQrSink
                 }
 
                 _toasts.ShowBatch(batch, photo);
-                return;
+            }
+            else
+            {
+                foreach (var decision in batch)
+                {
+                    Show(decision);
+                }
             }
 
-            foreach (var decision in batch)
-            {
-                Show(decision);
-            }
+            SaveHistory(batch, photo);
         }, null);
+    }
+
+    void SaveHistory(QrBatch batch, string photo)
+    {
+        try
+        {
+            // 履歴は新しい物を先頭に足すので、位置の順の最後から足す。メニューと一覧で写真の中の順に並ぶ
+            var now = DateTimeOffset.Now;
+            foreach (var decision in batch.Reverse())
+            {
+                _app.History.Add(new HistoryEntry(decision.Content.Text, now, Path.GetFileName(photo)));
+            }
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            // メモリの上の履歴には入っているので、メニューからは開ける。知らせるのは最初の1回だけ
+            _app.Log.Write($"履歴を保存できない：{e.GetType().Name}");
+            if (!_historySaveFailed)
+            {
+                _historySaveFailed = true;
+                _toasts.ShowSettingsHint("履歴を保存できません", "ディスクの空きを確かめてください。読んだ QR は、ShotLink を終了するまでメニューから開けます");
+            }
+        }
     }
 
     void Show(QrDecision decision)
@@ -314,7 +347,12 @@ sealed class TrayContext : ApplicationContext, IQrSink
         }
 
         targets.AddRange(_settings.ExtraFolders.Select(f => new WatchTarget(f.Path, f.IncludeSubfolders)));
-        _watch.SetTargets(targets);
+        foreach (var bad in _watch.SetTargets(targets))
+        {
+            // 手で直した settings.json の壊れた行など。この1つだけを外し、ほかのフォルダは見張る
+            _app.Log.Write("見張る場所として使えない行を外した");
+            _toasts.ShowSettingsHint("見張れないフォルダがあります", ToastText.Flatten(bad.Path));
+        }
         UpdateState();
     }
 
@@ -355,6 +393,10 @@ sealed class TrayContext : ApplicationContext, IQrSink
         {
             (badge, tip) = (IconBadge.Warning, $"ShotLink：見つからないフォルダが {missing.Count} 件あります");
         }
+        else if (_processorStopped)
+        {
+            (badge, tip) = (IconBadge.Warning, "ShotLink：写真の読み取りが止まりました。起動し直してください");
+        }
         else if (_notificationsBlocked)
         {
             (badge, tip) = (IconBadge.Warning, "ShotLink：Windows の通知がオフです。読んだ QR はメニューの「最近読んだ QR」から開けます");
@@ -389,6 +431,12 @@ sealed class TrayContext : ApplicationContext, IQrSink
         _watch.Dispose();
         _processor.DisposeAsync().AsTask().Wait(TimeSpan.FromSeconds(5));
         _toasts.Dispose();
+        if (_app.Development)
+        {
+            // 開発用の通知を残すと、止まっている間にクリックされたとき、Windows が SHOTLINK_HOME を付けずに exe を起こし、
+            // 本番の保存先と本番の登録で動いてしまう（CLAUDE.md「アプリを起動して確かめる」6・Codex の点検 2026-10-14）
+            Toasts.ClearAll();
+        }
         _settingsForm?.Close();
         _listForm?.Close();
         _app.Log.Write("終了");
