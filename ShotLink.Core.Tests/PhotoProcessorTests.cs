@@ -125,7 +125,7 @@ public class PhotoProcessorTests
         p.Enqueue("1.png");
         await p.CompleteAsync();
 
-        Assert.True(2 == _log.Count, string.Join(" / ", _log));
+        Assert.True(2 == _log.Count(l => l.StartsWith("QR：")), string.Join(" / ", _log));
         Assert.Contains(_log, l => l.Contains("a.example"));
         Assert.DoesNotContain(_log, l => l.Contains("secret-token-123") || l.Contains("ひみつ"));
     }

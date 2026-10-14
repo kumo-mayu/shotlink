@@ -12,6 +12,8 @@ dotnet build 2>&1 | Select-Object -Last 4          # 警告 0・エラー 0 を�
 dotnet test --nologo 2>&1 | Select-String '合計:|失敗 |Total|Failed'   # 件数と失敗
 ```
 
+**成否は `dotnet test` の終了コードで見る。**`| Select-String` や `| grep` でつなぐと、試験が落ちても絞り込みが成功して先へ進み、
+落ちたままコミットしてしまう（2026-10-14 に実際に起きた）。コミットの前は `dotnet test --nologo; if ($LASTEXITCODE) { 止める }` の形にする。
 出力を丸ごと出さない（文脈を食う）。失敗したときだけ `Select-String 'error|失敗|Failed'` で該当の行を見る。
 実行ファイルが掴まれて失敗したら、確かめ用に起動した ShotLink を終了する（常駐しているので、通知領域から抜けているかも見る）。
 見張り・時計に絡む直しをしたときは、テストを2回走らせて揺れないことを見る。
