@@ -66,6 +66,7 @@ VRChat の写真フォルダを見張り、新しく撮られた写真に QR コ
   - 1080p で 1 画素ぶんぼけると、正面で 14%、斜め 45° で 25% が要る。左右に 65° 傾くと読みにくくなり、2 画素ぼけると 25% でも 3 枚に 1 枚しか読めない
   - 作り物なので、実際の写真での読める範囲は違いうる [要確認]（9章）
 - 読み取りは裏のスレッドで行い、1枚ずつ順に処理する
+- [決定] 1枚を処理し終えたら、画像に使ったメモリを Windows に返す。8K を1枚読むと、.NET が画像の分（約 33 MB）を持ち続け、待ち受け中の ShotLink だけの分が 19 MB から 51 MB に増えたまま戻らなかった（2026-10-14）
 
 ### 3.4 同じ QR が何度も来たとき
 
@@ -126,15 +127,19 @@ VRChat の写真フォルダを見張り、新しく撮られた写真に QR コ
 
 ## 8. 技術
 
-- [案] C# / WPF / **.NET 10**（`net10.0-windows`。Chmonos と同じ。SDK は `global.json` で固定）
+- C# / **Windows Forms** / **.NET 10**（SDK は `global.json` で固定）。[決定] WPF は使わない（2026-10-14、ユーザー判断）。窓は設定の1枚だけで Windows Forms で足り、WPF を外すと exe が 191 MB から 137 MB になる
 - 通知領域のアイコン：Windows Forms の `NotifyIcon`（`UseWindowsForms`）。部品を足さずに済む
 - 通知：**トースト**（`Microsoft.Toolkit.Uwp.Notifications` 7.1.3。MIT）。TFM は `net10.0-windows10.0.17763.0`。2026-10-14 に実機で試して決めた
   - `NotifyIcon` の吹き出しは、出ている間のクリックは受けられたが、Windows 11 では**通知センターに残らず**、**一度に1件**しか出せない（次を出すと前が消える）。1枚に QR が複数あると最後の1つしか残らない
   - トーストは、出ている間・通知センターに入ったあと・3件続けて出したときのどれも、どの通知をクリックしたかまで受け取れた
-  - この部品は、クリックを受け取るために Windows へ ShotLink を登録する（`HKCU\Software\Classes\AppUserModelId\<exe の場所>` と COM の登録、`%LOCALAPPDATA%\ToastNotificationManagerCompat\` のアイコン）。インストーラーが無いので、exe を消しても残る。[案] 設定の窓に「Windows への通知の登録を消す」を置き（部品の `Uninstall`）、README に「消す前に押す」と書く
+  - この部品は、クリックを受け取るために Windows へ ShotLink を登録する（`HKCU\Software\Classes\AppUserModelId\…` と COM の登録、`%LOCALAPPDATA%\ToastNotificationManagerCompat\` のアイコン）。インストーラーが無いので、exe を消しても残り、`設定 → システム → 通知` の一覧にも残る
+  - [決定] 起動の最初に**決まった AppUserModelID**（`KumoMayu.ShotLink`）を付ける。付けないと登録が exe の置き場所ごとに別になり、版を上げて別のフォルダに展開するたびに通知の一覧に「ShotLink」が増える（試しの間だけで 6 件たまった）。付けると、別の場所から起動しても登録は1つにまとまり、クリックで起こす exe は最後に起動した場所に書き換わる（2026-10-14 に確かめた）
+ [案] 設定の窓に「Windows への通知の登録を消す」を置き（部品の `Uninstall`）、README に「消す前に押す」と書く
   - [決定] **Windows の通知がオフの人**には通知が見えない（作者の PC が実際にそうだった）。起動時と設定の窓で調べ、オフならアイコンとツールチップで「メニューの『最近読んだ QR』から開ける」と知らせる。「直接開く」が ON なら、通知が出なくても開く
 - [決定] 配布：`win-x64` の self-contained・単一ファイル（Paramroom の `make-release.sh` と同じ形）。インストーラーは無し。使う人に .NET を入れてもらう手順を増やさないため
-  - 大きさ（2026-10-14、通知の試しの段階）：exe 191 MB、zip 75 MB、起動 約 0.2 秒、常駐のメモリ 約 71 MB。いちばん大きい中身は Windows の API の橋渡し（`Microsoft.Windows.SDK.NET.dll` 22 MB）
+  - 大きさ（2026-10-14、通知の試しの段階）：WPF ありで exe 191 MB・zip 75 MB、**Windows Forms だけで exe 137 MB・zip 52 MB**。起動 約 0.2 秒。いちばん大きい中身は Windows の API の橋渡し（`Microsoft.Windows.SDK.NET.dll` 22 MB）
+  - 常駐のメモリ（ShotLink だけの分）：アイコンだけで 13 MB（.NET と Windows Forms の土台）、トースト通知を使うと 19 MB
+  - [決定] トリミング（`PublishTrimmed`）は**使わない**（ユーザー判断）。部分的に掛けると exe 60 MB・zip 22 MB になり、通知のクリックまで動いたが、Windows Forms のトリミングは Microsoft が公式に対応していない
   - [案] 単一ファイルの圧縮（`EnableCompressionInSingleFile`）は**使わない**。exe は 79 MB に縮むが、zip は 73 MB とほぼ同じで、起動が 0.2 秒遅くなり、常駐のメモリが 229 MB に増える
 - [案] 画像は Windows の部品（WIC）で読む。ライブラリを足さずに PNG・JPEG・WebP が読める。WebP は Windows 11 なら最初から読め、Windows 10 では「WebP 画像拡張機能」が要る
 - [案] ライセンスは MIT（Paramroom と同じ）。zxing-cpp（と、その中の libzint。BSD-3-Clause）など同梱するライブラリは `THIRD-PARTY-NOTICES.txt` に書く
