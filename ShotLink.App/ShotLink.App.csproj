@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    通知領域のアイコンと設定の窓。メインウィンドウは持たない（仕様書 2章）。
+    WPF に通知領域の部品が無いので、アイコンと通知は Windows Forms の NotifyIcon を使う（仕様書 8章）
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>ShotLink</AssemblyName>
+    <RootNamespace>ShotLink.App</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ShotLink.Core\ShotLink.Core.csproj" />
+  </ItemGroup>
+
+</Project>

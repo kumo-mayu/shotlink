@@ -1,4 +1,9 @@
 <Solution>
+  <Folder Name="/tools/">
+    <Project Path="tools/QrBench/QrBench.csproj" />
+  </Folder>
+  <Project Path="ShotLink.App/ShotLink.App.csproj" />
   <Project Path="ShotLink.Core.Tests/ShotLink.Core.Tests.csproj" />
   <Project Path="ShotLink.Core/ShotLink.Core.csproj" />
+  <Project Path="ShotLink.Fixtures/ShotLink.Fixtures.csproj" />
 </Solution>
