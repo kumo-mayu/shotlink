@@ -92,7 +92,7 @@ public class FileReadyWaiterTests
         var probe = new ScriptedProbe(Done(good.Length));
         probe.Snapshots.Enqueue(mixed);
         probe.Snapshots.Enqueue(good);
-        Assert.Equal(good, await new FileReadyWaiter(probe, NoWait).WaitAsync("x.png"));
+        Assert.Equal(good, (await new FileReadyWaiter(probe, NoWait).WaitAsync("x.png"))!.Take());
     }
 
     static byte[] Png()

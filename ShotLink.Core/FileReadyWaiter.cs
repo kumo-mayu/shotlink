@@ -26,13 +26,22 @@ public sealed class FileReadyWaiter(IFileProbe probe, Func<TimeSpan, Cancellatio
     /// <summary>これを過ぎても書き終わらないファイルはあきらめる（消された・別のソフトが掴み続けている・壊れている）</summary>
     public static readonly TimeSpan Timeout = TimeSpan.FromSeconds(10);
 
+    /// <summary>
+    /// 写し取って確かめる。非同期の関数の中にバイト列を置かない：置くと、終わった処理の箱が次の写真まで写し（8K で数十 MB）を掴み続ける
+    /// </summary>
+    FileSnapshot? TrySnapshot(string path)
+    {
+        var data = probe.ReadAll(path);
+        return data is not null && ImageIntegrity.Verify(data) != FileEnding.Incomplete ? new FileSnapshot(data) : null;
+    }
+
     public static FileReadyWaiter CreateDefault() => new(new FileProbe(), Task.Delay);
 
     /// <summary>
     /// 書き終わったら、ファイルを丸ごと写し取って返す。あきらめたら null。
     /// 写しを返すのは、読み込み（8K で約 0.5 秒）の間に 写真に情報を書き足す道具がファイルを書き直しても、混ざった中身を読まないため
     /// </summary>
-    public async Task<byte[]?> WaitAsync(string path, CancellationToken cancel = default)
+    public async Task<FileSnapshot?> WaitAsync(string path, CancellationToken cancel = default)
     {
         long? previous = null;
         var quiet = TimeSpan.Zero;
@@ -48,10 +57,10 @@ public sealed class FileReadyWaiter(IFileProbe probe, Func<TimeSpan, Cancellatio
                     || (check.Ending == FileEnding.Unknown && quiet >= QuietPeriod))
                 {
                     // 写し取った中身を確かめる。書き直しの途中に当たったら（PNG の CRC が合わない）、0.2 秒後に写し直す
-                    var data = probe.ReadAll(path);
-                    if (data is not null && ImageIntegrity.Verify(data) != FileEnding.Incomplete)
+                    var snapshot = TrySnapshot(path);
+                    if (snapshot is not null)
                     {
-                        return data;
+                        return snapshot;
                     }
 
                     quiet = TimeSpan.Zero;
@@ -75,6 +84,23 @@ public sealed class FileReadyWaiter(IFileProbe probe, Func<TimeSpan, Cancellatio
             await delay(Interval, cancel);
             waited += Interval;
         }
+    }
+}
+
+/// <summary>
+/// 写し取ったファイルの中身。取り出すと空になる。
+/// バイト列をそのまま Task の結果にすると、終わった処理（の Task）が次の写真まで 8K の写し（約 24 MB）を掴み続けた
+/// （2026-10-14、作者の実機で、読み終わったあとも .NET の分が 24〜27 MB 残った）
+/// </summary>
+public sealed class FileSnapshot(byte[] data)
+{
+    byte[]? _data = data;
+
+    public byte[] Take()
+    {
+        var d = _data ?? throw new InvalidOperationException("写しはもう取り出した");
+        _data = null;
+        return d;
     }
 }
 

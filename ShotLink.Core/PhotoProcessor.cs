@@ -115,9 +115,13 @@ public sealed class PhotoProcessor : IAsyncDisposable
 
             if (Interlocked.Decrement(ref _pending) == 0)
             {
+                // 写真の処理の終わりの続きは、処理の呼び出しの上でそのまま走る。その上で返しても、まだ下の呼び出しが
+                // 写しや画像を掴んでいて戻らなかった（8K のあと .NET の分が 9〜46 MB 残った）。一度譲って、呼び出しを抜けてから返す
+                await Task.Yield();
                 ReturnMemory();
                 using var self = System.Diagnostics.Process.GetCurrentProcess();
-                Log($"メモリ：.NET {GC.GetTotalMemory(false) / 1_048_576} MB・全体 {self.PrivateMemorySize64 / 1_048_576} MB");
+                // .NET の分はヒープの大きさで見る。GC.GetTotalMemory は、メモリを返した直後に負の値を返した
+                Log($"メモリ：.NET {GC.GetGCMemoryInfo().HeapSizeBytes / 1_048_576} MB・全体 {self.PrivateMemorySize64 / 1_048_576} MB");
             }
         }
     }
@@ -157,6 +161,10 @@ public sealed class PhotoProcessor : IAsyncDisposable
     /// </summary>
     static void ReturnMemory()
     {
+        // 画像の部品（WinRT）は、渡した写しの流れを、後片付け（ファイナライザー）が済むまで握っている。
+        // 1回目の回収で片付けを走らせ、済むのを待ってから、圧縮して返す（待たないと 8K の写しが丸ごと残った）
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
         System.Runtime.GCSettings.LargeObjectHeapCompactionMode = System.Runtime.GCLargeObjectHeapCompactionMode.CompactOnce;
         GC.Collect(2, GCCollectionMode.Aggressive, blocking: true, compacting: true);
     }
@@ -173,16 +181,15 @@ public sealed class PhotoProcessor : IAsyncDisposable
 
     async Task ProcessAsync(string path, CancellationToken cancel)
     {
-        var data = await _waiter.WaitAsync(path, cancel);
-        if (data is null)
+        var snapshot = await _waiter.WaitAsync(path, cancel);
+        if (snapshot is null)
         {
             Log($"書き込みが終わらないので読まない：{Path.GetFileName(path)}");
             Fail(path);
             return;
         }
 
-        var texts = Read(data, path);
-        data = null;
+        var texts = Read(snapshot.Take(), path);
         if (texts is null)
         {
             Log($"画像として読めない：{Path.GetFileName(path)}");
