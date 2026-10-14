@@ -12,7 +12,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="ZXing.Net" Version="0.16.11" />
+    <!-- 読み取りは zxing-cpp（QrReader の説明）。ネイティブの DLL（win-x64 で約 3 MB）を含む -->
+    <PackageReference Include="ZXingCpp" Version="0.5.3" />
   </ItemGroup>
 
 </Project>

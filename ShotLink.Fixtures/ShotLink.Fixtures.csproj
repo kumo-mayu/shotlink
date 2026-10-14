@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    QR の読み取りの素材を作る（仕様書 9章 [決定]：素材は Claude が作り、画像はリポジトリに入れない）。
+    試験はここで画素の並びを作ってそのまま読ませ、ファイルにも WIC にも触れない。
+    見張りを手で確かめるときだけ、tools/QrFixtures が PNG に書き出す
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      QR を描くのは ZXing.Net。マス目（BitMatrix）をそのまま受け取れて、斜めに貼る計算に使いやすい。
+      素材を作るためだけで、配る物には入らない
+    -->
+    <PackageReference Include="ZXing.Net" Version="0.16.11" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ShotLink.Core\ShotLink.Core.csproj" />
+  </ItemGroup>
+
+</Project>

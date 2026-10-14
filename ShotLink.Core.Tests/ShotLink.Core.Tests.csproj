@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ShotLink.Core\ShotLink.Core.csproj" />
+    <ProjectReference Include="..\ShotLink.Fixtures\ShotLink.Fixtures.csproj" />
   </ItemGroup>
 
 </Project>

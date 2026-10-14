@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    QR を探す試し方（縮小・切り出し）を決めるために、作った素材で読める割合と時間を測る（仕様書 3.3 [要確認]）。
+    既定の試験には入れない（8K を何十枚も作るので数十秒かかる）
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\ShotLink.Fixtures\ShotLink.Fixtures.csproj" />
+  </ItemGroup>
+
+</Project>
