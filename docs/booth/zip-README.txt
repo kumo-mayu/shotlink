@@ -74,6 +74,9 @@ Paramroom で相手のアバターに出た QR コードも、カメラで撮る
 ■ ライセンス
 
   MIT ライセンスです（LICENSE）。改変・再配布できます。著作権表示と LICENSE を残してください。
+  ShotLink.exe に含まれる Microsoft の部品（Microsoft.Windows.SDK.NET.dll・WinRT.Runtime.dll）は、
+  Microsoft の Windows SDK のライセンス条項に従います。MIT ライセンスはこれらの部品には及びません。
+  ほかのライブラリのライセンスは THIRD-PARTY-NOTICES.txt にあります。
   VRChat Inc. とは関係のない、非公式のツールです。
 
   QRコードは株式会社デンソーウェーブの登録商標です。

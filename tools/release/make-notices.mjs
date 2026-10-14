@@ -33,6 +33,10 @@ ShotLink は次のライブラリを使っています。それぞれのライ�
 ShotLink.exe は .NET を中に含む形（自己完結・単一ファイル）で組んでいるので、.NET の実行環境と
 Windows Forms の許諾文と第三者の表示も添えています。
 ShotLink.exe is a self-contained single-file build and includes the .NET runtime and Windows Forms.
+
+ShotLink 自身は MIT ライセンスですが、MIT ライセンスは下のライブラリには及びません。それぞれのライセンスに従います。
+特に、Microsoft の部品（Microsoft.Windows.SDK.NET.dll・WinRT.Runtime.dll）は、Microsoft の Windows SDK の
+ライセンス条項に従います。
 `,
   section(`zxing-cpp（.NET 向けの包み ZXingCpp ${zxing} と、その中のネイティブの ZXing.dll）
 https://github.com/zxing-cpp/zxing-cpp
@@ -54,10 +58,15 @@ https://github.com/microsoft/CsWinRT
 License: MIT
 
 ${cswinrt}`),
-  section(`Microsoft.Windows.SDK.NET ${sdkRef}（Windows の API の .NET 向けの定義）
+  section(`Microsoft.Windows.SDK.NET.Ref ${sdkRef}（Microsoft.Windows.SDK.NET.dll と WinRT.Runtime.dll。Windows の API の .NET 向けの定義）
 Copyright (c) Microsoft Corporation. All rights reserved.
 License: Microsoft Windows SDK License Terms
-https://aka.ms/WinSDKLicenseURL`),
+https://aka.ms/WinSDKLicenseURL
+
+この2つのファイルは、Windows SDK の再配布してよいファイルの一覧（https://learn.microsoft.com/en-us/legal/windows-sdk/redist）に
+載っており、WinRT の API を呼ぶためにアプリの一部として改変せずに配ることが認められている。
+These files are listed as Distributable Code in the Windows SDK redist list and are distributed unmodified
+as part of ShotLink to call WinRT APIs. They are subject to the Microsoft Windows SDK License Terms, not the MIT License.`),
   section(`.NET Runtime ${runtime} (Microsoft.NETCore.App)
 https://github.com/dotnet/runtime
 License: MIT

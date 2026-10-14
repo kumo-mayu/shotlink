@@ -16,9 +16,11 @@
 - ask.vrchat.com の「Branding guideline for tool or service names」（2024-02）への VRChat の返答：VRChat が提供・承認していると見せようとしない限り、用途を示すために「VRChat」を使ってよい
 - ShotLink は名前に「VRChat」を入れていない。説明では「VRChat で撮った写真」と用途として書き、README と設定の窓に「VRChat Inc. とは関係のない、非公式のツール」と書いている
 
-## Windows SDK の .NET 向けの定義（2026-10-14）[要確認]
+## Windows SDK の .NET 向けの定義（2026-10-14）
 
 - exe に入る `Microsoft.Windows.SDK.NET.dll`（トースト通知のための Windows の API の橋渡し）は、NuGet の包み `Microsoft.Windows.SDK.NET.Ref` から来る。包みのライセンスは **Windows SDK のライセンス条項**（https://aka.ms/WinSDKLicenseURL）で、今ある版はどれも同じ
 - .NET で Windows の API を使うアプリ（TFM が `net*-windows10.0.*`）には必ず入る物で、ShotLink だけの事情ではない
 - 条項の再配布の項（Distributable Code）には、次のような条件が並んでいる：配るプログラムに主な機能を足すこと・著作権表示を出すこと・配った先の人にもこの条項と同程度に守る条件へ同意させること・Microsoft を免責すること・Microsoft の OS 以外で動かさないこと
-- どのファイルが Distributable Code に当たるかの定義の部分は、RTF の書式が入り組んでいて Claude には取り出せなかった。MIT で配る ShotLink とどう両立させるか（README にこの条項を指す一言を足すなど）は、ユーザーが条項を読んで決める
+- Distributable Code は「REDIST.TXT の一覧に載っているファイル」。一覧（https://learn.microsoft.com/en-us/legal/windows-sdk/redist）に `Microsoft.Windows.SDK.NET.Ref` の包みのファイル（`Microsoft.Windows.SDK.NET.dll`・`WinRT.Runtime.dll`）が名指しで載っていて、「WinRT の API を呼べるように、アプリの一部として改変せずに配ってよい」とある
+- 条件のうち「配った先の人にも、この条項と同程度に守る条件へ同意させる」に合わせるため、zip の README と THIRD-PARTY-NOTICES.txt に「これらの部品は Microsoft の条項に従い、MIT は及ばない」と書く（ユーザー判断：案 A）
+- 「Microsoft を免責する」は配る人が負う形式上の条件で、書いて済ませるものではない。同じ部品を使う .NET のアプリを配る人は皆この条件の下にある。気になるなら専門家に相談する

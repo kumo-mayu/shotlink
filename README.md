@@ -29,5 +29,6 @@ VRChat Inc. とは関係のない、非公式のツールです。
 ## ライセンス
 
 [MIT](LICENSE)。同梱しているライブラリのライセンスは [`THIRD-PARTY-NOTICES.txt`](THIRD-PARTY-NOTICES.txt)。
+exe に含まれる Microsoft の部品（`Microsoft.Windows.SDK.NET.dll`・`WinRT.Runtime.dll`）は Windows SDK のライセンス条項に従い、MIT ライセンスは及びません。
 
 QRコードは株式会社デンソーウェーブの登録商標です。
