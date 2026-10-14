@@ -76,7 +76,11 @@ dotnet test
 3. 素材は `dotnet run -c Release --project tools/QrBench -- --dump <作業用>\fixtures` で作り（RGBA の PNG と 8K）、
    別のフォルダに写してから `watched` へ**移動**する
 4. 確かめは `<保存先>\Logs\<日付>.log`（写真・QR・メモリの行）と `history.json`。設定の窓は `PrintWindow` で撮って見る
-5. **通知をクリックする確かめは人にしかできない。**ユーザーが席にいるときに、何を押すかを並べて頼む
+5. **通知をクリックする確かめは人にしかできない。**ユーザーが席にいるときに、何を押すかを並べて頼む。
+   クリック以外（通知が出たか・何件残ったか・置き換わったか）は自分で確かめ、人に頼まない。
+   通知センターに残っている通知は、Windows PowerShell 5.1 から
+   `[Windows.UI.Notifications.ToastNotificationManager]::History.GetHistory('KumoMayu.ShotLink.Dev')` で、Tag と中身まで読める
+   （件数だけを数えると取り違えたことがある。中身まで出して見る）
 6. **確かめの間は ShotLink を起動したままにする。**止まっている間に開発用の通知をクリックされると、Windows は
    `SHOTLINK_HOME` を付けずに exe を起こすので、本番の保存先と本番の登録の名前で動いてしまう。
    終えるときは、開発用の通知を消してから止める（`ToastNotificationManager.History.Clear('KumoMayu.ShotLink.Dev')`）
