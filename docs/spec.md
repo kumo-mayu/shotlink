@@ -2,6 +2,7 @@
 
 > 作成：2026-10-14（Claude Code。経緯は idea-vault の `ideas/vrc-photo-qr-watcher.md`）
 > 印：**[決定]** ユーザーが決めた／**[案]** 推奨。実装前に決めてよい／**[要確認]** 実機や資料で確かめる
+> 決め事の根拠の数字は `docs/spec/measurements.md`、名前とライセンスの調べは `docs/spec/names-and-licenses.md`。このファイルは 200 行までにする
 
 ## 1. 何をするソフトか
 
@@ -57,18 +58,13 @@ VRChat の写真フォルダを見張り、新しく撮られた写真に QR コ
 ### 3.3 QR の読み取り
 
 - ライブラリは **zxing-cpp**（Apache-2.0。.NET 向けの包み ZXingCpp。ネイティブの DLL が約 3 MB 増える）。作った素材で ZXing.Net と比べて決めた（2026-10-14）
-  - 左右に 45〜55° 傾いた QR を、ZXing.Net は 6 枚中 1 枚しか読めず、zxing-cpp は 6 枚とも読めた。1枚に3つ並べたときも ZXing.Net は1つ取りこぼした
+  - 斜めの QR と1枚に複数の QR で、zxing-cpp の方がはっきり多く読めた（数字は `docs/spec/measurements.md`）
 - VRChat の写真は 1920×1080 から 4K・8K まであり、QR は写真の中で小さく・斜めに写ることが多い
-- 縮小・切り出し・拡大を自前で重ねることはしない。zxing-cpp の中の試し（`TryHarder`・`TryRotate`・`TryDownscale`）だけで、重ねても読める数は増えなかった（拡大は時間が 5 倍になるだけ）
-- 作った素材で測った読める範囲（`tools/QrBench`。QR の一辺を写真の短い辺に対する割合で表す）
-  - 時間：1枚あたり 1080p 約 5 ms、4K 約 19 ms、8K 約 78 ms。QR の無い写真で読み違えたのは 0 件
-  - 読めるかどうかは大きさより、**QR の1マスが何画素で写るか**と**ぼけ**で決まる。ぼけが無ければ、1080p は 9%（約 100 画素）、4K は 4.5%、8K は 3% から読める
-  - 1080p で 1 画素ぶんぼけると、正面で 14%、斜め 45° で 25% が要る。左右に 65° 傾くと読みにくくなり、2 画素ぼけると 25% でも 3 枚に 1 枚しか読めない
-  - 作り物なので、実際の写真での読める範囲は違いうる [要確認]（9章）
+- 縮小・切り出し・拡大を自前で重ねることはしない。zxing-cpp の中の試し（`TryHarder`・`TryRotate`・`TryDownscale`）だけで、重ねても読める数は増えなかった
+- 1枚あたり 8K でも 0.1 秒かからない。読めるかどうかは大きさより、**QR の1マスが何画素で写るか**と**ぼけ**で決まる（読める範囲は `docs/spec/measurements.md`）。作り物の素材で測ったので、実際の写真では違いうる [要確認]（9章）
 - 読み取りは裏のスレッドで行い、1枚ずつ順に処理する
-- [決定] 1枚を処理し終えたら、画像に使ったメモリを Windows に返す。8K を1枚読むと、.NET が画像の分（約 33 MB）を持ち続け、待ち受け中の ShotLink だけの分が 19 MB から 51 MB に増えたまま戻らなかった（2026-10-14）
-  - 作ったあとに測った値：待ち受け 15 MB、1080p を読んだあと 19〜21 MB、8K を読んでいる間は一時 約 290 MB、読み終わったあと 25〜28 MB（.NET の分は 0〜4 MB で、残りは Windows の画像の部品などが持つ分）
-  - 画像を非同期の関数の中に置くと、終わった処理が次の写真まで画像を掴み続ける（8K のあと .NET の分が 36 MB 残った）。読み込みと読み取りは非同期でない関数に分ける
+- [決定] 1枚を処理し終えたら、画像に使ったメモリを Windows に返す。返さないと、8K を1枚読んだあと待ち受けのメモリが増えたまま戻らない
+  - 画像を非同期の関数の中に置くと、終わった処理が次の写真まで画像を掴み続ける。読み込みと読み取りは非同期でない関数に分ける
 
 ### 3.4 同じ QR が何度も来たとき
 
@@ -143,17 +139,15 @@ VRChat の写真フォルダを見張り、新しく撮られた写真に QR コ
 - C# / **Windows Forms** / **.NET 10**（SDK は `global.json` で固定）。[決定] WPF は使わない（2026-10-14、ユーザー判断）。窓は設定の1枚だけで Windows Forms で足り、WPF を外すと exe が 191 MB から 137 MB になる
 - 通知領域のアイコン：Windows Forms の `NotifyIcon`（`UseWindowsForms`）。部品を足さずに済む
 - 通知：**トースト**（`Microsoft.Toolkit.Uwp.Notifications` 7.1.3。MIT）。TFM は `net10.0-windows10.0.17763.0`。2026-10-14 に実機で試して決めた
-  - `NotifyIcon` の吹き出しは、出ている間のクリックは受けられたが、Windows 11 では**通知センターに残らず**、**一度に1件**しか出せない（次を出すと前が消える）。1枚に QR が複数あると最後の1つしか残らない
-  - トーストは、出ている間・通知センターに入ったあと・3件続けて出したときのどれも、どの通知をクリックしたかまで受け取れた
+  - `NotifyIcon` の吹き出しは、Windows 11 では**通知センターに残らず**、**一度に1件**しか出せない。トーストは、通知センターからも、続けて出した通知からも、どれをクリックしたかまで受け取れた（`docs/spec/measurements.md`）
   - この部品は、クリックを受け取るために Windows へ ShotLink を登録する（`HKCU\Software\Classes\AppUserModelId\…` と COM の登録、`%LOCALAPPDATA%\ToastNotificationManagerCompat\` のアイコン）。インストーラーが無いので、exe を消しても残り、`設定 → システム → 通知` の一覧にも残る
-  - [決定] 起動の最初に**決まった AppUserModelID**（`KumoMayu.ShotLink`）を付ける。付けないと登録が exe の置き場所ごとに別になり、版を上げて別のフォルダに展開するたびに通知の一覧に「ShotLink」が増える（試しの間だけで 6 件たまった）。付けると、別の場所から起動しても登録は1つにまとまり、クリックで起こす exe は最後に起動した場所に書き換わる（2026-10-14 に確かめた）
- [決定] 設定の窓に「Windows への通知の登録を消す」を置き（部品の `Uninstall`）、README に「消す前に押す」と書く
+  - [決定] 起動の最初に**決まった AppUserModelID**（`KumoMayu.ShotLink`）を付ける。付けないと登録が exe の置き場所ごとに別になり、版を上げて別のフォルダに展開するたびに通知の一覧に「ShotLink」が増える。付けると、別の場所から起動しても登録は1つにまとまる
+  - [決定] 設定の窓に「Windows への通知の登録を消す」を置き（部品の `Uninstall`）、README に「消す前に押す」と書く
   - [決定] **Windows の通知がオフの人**には通知が見えない（作者の PC が実際にそうだった）。起動時と設定の窓で調べ、オフならアイコンとツールチップで「メニューの『最近読んだ QR』から開ける」と知らせる。「直接開く」が ON なら、通知が出なくても開く
 - [決定] 配布：`win-x64` の self-contained・単一ファイル（Paramroom の `make-release.sh` と同じ形）。インストーラーは無し。使う人に .NET を入れてもらう手順を増やさないため
-  - 大きさ（2026-10-14、通知の試しの段階）：WPF ありで exe 191 MB・zip 75 MB、**Windows Forms だけで exe 137 MB・zip 52 MB**。起動 約 0.2 秒。いちばん大きい中身は Windows の API の橋渡し（`Microsoft.Windows.SDK.NET.dll` 22 MB）
-  - 常駐のメモリ（ShotLink だけの分）：アイコンだけで 13 MB（.NET と Windows Forms の土台）、トースト通知を使うと 19 MB
-  - [決定] トリミング（`PublishTrimmed`）は**使わない**（ユーザー判断）。部分的に掛けると exe 60 MB・zip 22 MB になり、通知のクリックまで動いたが、Windows Forms のトリミングは Microsoft が公式に対応していない
-  - [決定] 単一ファイルの圧縮（`EnableCompressionInSingleFile`）は**使わない**。exe は 79 MB に縮むが、zip は 73 MB とほぼ同じで、起動が 0.2 秒遅くなり、常駐のメモリが 229 MB に増える
+  - 大きさは exe 137 MB・zip 52 MB（形ごとの比べは `docs/spec/measurements.md`）
+  - [決定] トリミング（`PublishTrimmed`）は**使わない**（ユーザー判断）。exe は 60 MB まで縮むが、Windows Forms のトリミングは Microsoft が公式に対応していない
+  - [決定] 単一ファイルの圧縮（`EnableCompressionInSingleFile`）は**使わない**。zip はほぼ同じ大きさのまま、常駐のメモリが 3 倍になる
 - 画像は Windows の部品（WIC。`Windows.Graphics.Imaging` から使う）で読む。ライブラリを足さずに PNG・JPEG・WebP が読める。WebP は Windows 11 なら最初から読め、Windows 10 では「WebP 画像拡張機能」が要る [要確認：WebP は実物で読んでいない]
   - 灰色（Gray8）で受け取れれば 8K でも 33 MB で済む。受け取れない形式だけ BGRA でもらって直す
 - 配る形は `ShotLink.App/Properties/PublishProfiles/win-x64.pubxml`（`dotnet publish ShotLink.App -p:PublishProfile=win-x64` で `publish\ShotLink-win-x64\ShotLink.exe` 1つ）
@@ -185,14 +179,10 @@ VRChat の写真フォルダを見張り、新しく撮られた写真に QR コ
   - zip の README は `docs/booth/zip-README.txt`（`{version}` を埋める。【未定】が残っていると tag の組み立ては止まる）
   - `THIRD-PARTY-NOTICES.txt` は exe に入る部品すべて（.NET の実行環境・Windows Forms・通知の部品・C#/WinRT・Windows SDK の定義・zxing-cpp・libzint）の許諾文。SDK や部品の版を上げたら `node tools/release/make-notices.mjs` で組み直す。組み立ては、告知の版と同梱する版が合わなければ止まる
   - 版を出す手順：`Directory.Build.props` の `Version` を上げてコミット → tag `v<版>` を push（ユーザー）→ 下書きの中身を確かめて公開（ユーザー）
-  - [要確認] `Microsoft.Windows.SDK.NET.dll` は Windows SDK のライセンス条項（https://aka.ms/WinSDKLicenseURL）で配られている。.NET の Windows 向けのアプリには必ず入る物だが、条項の再配布の項を一度読む
+  - [要確認] `Microsoft.Windows.SDK.NET.dll` は Windows SDK のライセンス条項で配られている。条項の再配布の条件と、MIT で配ることとの両立はユーザーが読んで決める（調べた内容は `docs/spec/names-and-licenses.md`）
 - BOOTH：単独の無料商品として同じ zip を置く
 - Paramroom：Paramroom の `make-release.sh` が ShotLink の最新の Releases から exe を取ってきて、Paramroom の zip に入れる。Paramroom の版を出すときに、その時点の最新を入れ直す（ShotLink を更新するたびに Paramroom を差し替えはしない）。同梱の README に「最新版は ShotLink の商品ページへ」と書く
-- 名前の調べ（2026-10-14、Claude。判断はユーザー）
-  - 「ShotLink」は、アメリカの PGA ツアー（ゴルフ）がショットの記録の仕組みの名前に使っている。アメリカの登録は、ソフトウェア（区分 9）の分は 2009 年に失効し、今あるのはゴルフの実況・成績の配信（区分 41）。分野は違うが、同じ名前の有名な物がある
-  - 日本の登録（J-PlatPat）は、Claude の道具からは引けなかった（画面の操作が要る）[要確認：ユーザーが J-PlatPat の商標検索で「ShotLink」「ショットリンク」を引く]
-  - VRChat の名前：VRChat の公式の返答（ask.vrchat.com、2024-02）は「VRChat が提供・承認していると見せようとしない限り、用途を示すために『VRChat』を使ってよい」。「for VRChat」のような書き方と、「非公式」の一言を添えれば足りる見込み
-- 名前：公開前に J-PlatPat で「ShotLink」を引く [要確認]。VRChat の名前の使い方（「for VRChat」などの書き方）も、VRChat の商標のガイドラインで確かめる [要確認]
+- 名前とライセンスの調べ（2026-10-14、Claude。判断はユーザー）：`docs/spec/names-and-licenses.md`。日本の商標に同じ読みの物は無く、近い読みの物（ShortLinks・SHOWLINK など）がある。「VRChat」は提供・承認を装わなければ用途を示すために使ってよい
 
 ## 12. 決めていないこと
 
