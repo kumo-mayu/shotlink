@@ -182,6 +182,7 @@ VRChat の写真フォルダを見張り、新しく撮られた写真に QR コ
   - [決定] `Microsoft.Windows.SDK.NET.dll`・`WinRT.Runtime.dll` は Windows SDK のライセンス条項で配られ、再配布してよい一覧に載っている。zip の README と THIRD-PARTY-NOTICES.txt に「これらは Microsoft の条項に従い、MIT は及ばない」と書く（2026-10-14 ユーザー判断。調べは `docs/spec/names-and-licenses.md`）
 - BOOTH：単独の無料商品として同じ zip を置く
 - Paramroom：Paramroom の `make-release.sh` が ShotLink の最新の Releases から exe を取ってきて、Paramroom の zip に入れる。Paramroom の版を出すときに、その時点の最新を入れ直す（ShotLink を更新するたびに Paramroom を差し替えはしない）。同梱の README に「最新版は ShotLink の商品ページへ」と書く
+  - 作った（2026-10-14、Paramroom の a516fec）：`make-release.sh` の4つ目の引数で版を選ぶ（既定 latest、none で入れない）。`tools/release/fetch-shotlink.sh` が ShotLink の zip を取り、`.sha256` で確かめ、フォルダ（exe・README・LICENSE・THIRD-PARTY-NOTICES.txt）ごと Paramroom の zip に入れる。ShotLink の公開前は none を付ける
 - 名前とライセンスの調べ（2026-10-14、Claude。判断はユーザー）：`docs/spec/names-and-licenses.md`。日本の商標に同じ読みの物は無く、近い読みの物（ShortLinks・SHOWLINK など）がある。「VRChat」は提供・承認を装わなければ用途を示すために使ってよい
 
 ## 12. 決めていないこと
