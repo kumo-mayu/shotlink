@@ -14,7 +14,13 @@ public class PhotoProcessorTests
     {
         public List<(QrDecision Decision, string Photo)> Handled { get; } = [];
 
-        public void Handle(QrDecision decision, string photo) => Handled.Add((decision, photo));
+        public List<QrBatch> Batches { get; } = [];
+
+        public void Handle(QrBatch batch, string photo)
+        {
+            Batches.Add(batch);
+            Handled.AddRange(batch.Select(d => (d, photo)));
+        }
     }
 
     sealed class ReadyProbe : IFileProbe
@@ -134,7 +140,7 @@ public class PhotoProcessorTests
     {
         bool _thrown;
 
-        public void Handle(QrDecision decision, string photo)
+        public void Handle(QrBatch batch, string photo)
         {
             onCall();
             if (!_thrown)

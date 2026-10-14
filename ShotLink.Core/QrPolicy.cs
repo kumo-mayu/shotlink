@@ -15,4 +15,10 @@ public static class QrPolicy
     public const int OpenLimit = 3;
 
     public static readonly TimeSpan OpenLimitWindow = TimeSpan.FromMinutes(1);
+
+    /// <summary>
+    /// 1枚からこの件数以上読めたら、通知を1件にまとめる（仕様書 3.5 [決定]）。3件までなら通知が並んでも読めるが、
+    /// ポスターが並んだワールドなどで十件以上が一度に並ぶと、通知センターが埋まって目当ての物を探せない
+    /// </summary>
+    public const int SummarizeThreshold = 4;
 }

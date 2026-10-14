@@ -12,7 +12,8 @@ public interface IImageLoader
 /// <summary>決めたことを実際に行う（開く・知らせる・履歴に残す）。App が通知の部品で受ける</summary>
 public interface IQrSink
 {
-    void Handle(QrDecision decision, string photo);
+    /// <summary>1枚の写真から決めたこと（位置の順）。空のときは呼ばれない</summary>
+    void Handle(QrBatch batch, string photo);
 }
 
 /// <summary>
@@ -124,7 +125,7 @@ public sealed class PhotoProcessor : IAsyncDisposable
     IReadOnlyList<string>? Read(string path)
     {
         var image = _loader.TryLoad(path);
-        return image is null ? null : _reader.Read(image);
+        return image is null ? null : _reader.Read(image).Select(f => f.Text).ToList();
     }
 
     async Task ProcessAsync(string path, CancellationToken cancel)
@@ -142,11 +143,21 @@ public sealed class PhotoProcessor : IAsyncDisposable
             return;
         }
 
-        foreach (var decision in _dispatcher.Decide(texts, _options()))
+        var batch = _dispatcher.Decide(texts, _options());
+        foreach (var decision in batch)
         {
             // ログに中身は書かない。URL ならホスト名まで（仕様書 7章）
             _log($"QR：{decision.Action}：{decision.Content.Host ?? "（URL ではない）"}：{Path.GetFileName(path)}");
-            _sink.Handle(decision, path);
+        }
+
+        if (batch.Count > 0)
+        {
+            if (batch.Summarized)
+            {
+                _log($"QR が {batch.Count} 件あったので通知をまとめる：{Path.GetFileName(path)}");
+            }
+
+            _sink.Handle(batch, path);
         }
     }
 }

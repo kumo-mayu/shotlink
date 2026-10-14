@@ -11,11 +11,13 @@ public class QrReaderTests
 
     readonly QrReader _reader = new();
 
+    List<string> Texts(GrayImage image) => _reader.Read(image).Select(f => f.Text).ToList();
+
     [Fact]
     public void 正面の_QR_を読む()
     {
         var image = new SceneBuilder(1920, 1080).Place(new QrPlacement(Url, 960, 540, 300)).Build();
-        Assert.Equal([Url], _reader.Read(image));
+        Assert.Equal([Url], Texts(image));
     }
 
     [Theory]
@@ -30,7 +32,7 @@ public class QrReaderTests
             .Blur(height / 1080)
             .Noise(6)
             .Build();
-        Assert.Equal([Url], _reader.Read(image));
+        Assert.Equal([Url], Texts(image));
     }
 
     // ZXing.Net では読めず、zxing-cpp に替えた理由になった場面（QrReader の説明）
@@ -44,7 +46,7 @@ public class QrReaderTests
             .Blur(1)
             .Noise(6)
             .Build();
-        Assert.Equal([Url], _reader.Read(image));
+        Assert.Equal([Url], Texts(image));
     }
 
     [Fact]
@@ -55,7 +57,7 @@ public class QrReaderTests
             .Place(new QrPlacement("https://b.example/2", 1000, 500, 180, Roll: 10, Yaw: 30))
             .Place(new QrPlacement("C3", 1500, 800, 150, Roll: -20, Pitch: 20))
             .Build();
-        Assert.Equal(["A1", "C3", "https://b.example/2"], _reader.Read(image).Order(StringComparer.Ordinal));
+        Assert.Equal(["A1", "C3", "https://b.example/2"], Texts(image).Order(StringComparer.Ordinal));
     }
 
     [Fact]
@@ -65,14 +67,14 @@ public class QrReaderTests
             .Place(new QrPlacement(Url, 500, 500, 250))
             .Place(new QrPlacement(Url, 1400, 500, 250))
             .Build();
-        Assert.Equal([Url], _reader.Read(image));
+        Assert.Equal([Url], Texts(image));
     }
 
     [Fact]
     public void 日本語の中身も化けない()
     {
         var image = new SceneBuilder(1920, 1080, 5).Place(new QrPlacement("くもまゆ／ShotLink テスト", 960, 540, 300)).Build();
-        Assert.Equal(["くもまゆ／ShotLink テスト"], _reader.Read(image));
+        Assert.Equal(["くもまゆ／ShotLink テスト"], Texts(image));
     }
 
     [Theory]
@@ -82,6 +84,39 @@ public class QrReaderTests
     public void QR_が無ければ何も返さない(int seed)
     {
         var image = new SceneBuilder(3840, 2160, seed).Noise(6).Build();
-        Assert.Empty(_reader.Read(image));
+        Assert.Empty(Texts(image));
+    }
+}
+
+// 仕様書 3.5：通知・履歴・開く順は写真の中の位置の順
+public class QrOrderTests
+{
+    static QrFound Q(string text, int left, int top, int size = 100) => new(text, new QrBounds(left, top, left + size, top + size));
+
+    [Fact]
+    public void 行は上から_行の中は左から()
+    {
+        var sorted = QrOrder.ByPosition([Q("右下", 500, 400), Q("左上", 0, 0), Q("右上", 500, 0), Q("左下", 0, 400)]);
+        Assert.Equal(["左上", "右上", "左下", "右下"], sorted.Select(f => f.Text));
+    }
+
+    [Fact]
+    public void 少し傾いて並んでいても同じ行として左から()
+    {
+        // 右の物ほど少し上にある（斜めに撮ったポスターの列）。中心の高さだけで比べると右から並んでしまう
+        var sorted = QrOrder.ByPosition([Q("1", 0, 60), Q("2", 200, 30), Q("3", 400, 0)]);
+        Assert.Equal(["1", "2", "3"], sorted.Select(f => f.Text));
+    }
+
+    [Fact]
+    public void 写真から読んだ順も位置の順()
+    {
+        var image = new SceneBuilder(1920, 1080, 6)
+            .Place(new QrPlacement("右下", 1500, 800, 220))
+            .Place(new QrPlacement("左下", 400, 800, 220))
+            .Place(new QrPlacement("真ん中上", 960, 250, 220))
+            .Place(new QrPlacement("左上", 300, 260, 220))
+            .Build();
+        Assert.Equal(["左上", "真ん中上", "左下", "右下"], new QrReader().Read(image).Select(f => f.Text));
     }
 }

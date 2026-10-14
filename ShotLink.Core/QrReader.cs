@@ -2,7 +2,7 @@ using ZXingCpp;
 
 namespace ShotLink.Core;
 
-/// <summary>写真の中の QR を探して、中身の文字列を返す（1枚に複数あれば全部。仕様書 3.3）</summary>
+/// <summary>写真の中の QR を探して、中身と位置を返す（1枚に複数あれば全部。仕様書 3.3・3.5）</summary>
 /// <remarks>
 /// zxing-cpp を使う。作った素材で ZXing.Net と比べ（2026-10-14、tools/QrBench）、斜め 45〜55° の QR を
 /// ZXing.Net は 6 枚中 1 枚しか読めず、zxing-cpp は 6 枚とも読めた。1枚に3つ並べたときも ZXing.Net は 1 つ取りこぼした。
@@ -10,7 +10,8 @@ namespace ShotLink.Core;
 /// </remarks>
 public sealed class QrReader
 {
-    public IReadOnlyList<string> Read(GrayImage image)
+    /// <summary>写真の中の位置の順（左上から右下へ）に並べて返す。同じ中身は最初の1つだけ</summary>
+    public IReadOnlyList<QrFound> Read(GrayImage image)
     {
         using var options = new ReaderOptions
         {
@@ -25,15 +26,20 @@ public sealed class QrReader
         };
 
         var view = new ImageView(image.Pixels, image.Width, image.Height, ImageFormat.Lum, 0, 0);
-        var found = new List<string>();
+        var found = new List<QrFound>();
         foreach (var barcode in BarcodeReader.Read(view, options))
         {
-            if (barcode.IsValid && !found.Contains(barcode.Text, StringComparer.Ordinal))
+            if (!barcode.IsValid)
             {
-                found.Add(barcode.Text);
+                continue;
             }
+
+            var p = barcode.Position;
+            int[] xs = [p.TopLeft.X, p.TopRight.X, p.BottomRight.X, p.BottomLeft.X];
+            int[] ys = [p.TopLeft.Y, p.TopRight.Y, p.BottomRight.Y, p.BottomLeft.Y];
+            found.Add(new QrFound(barcode.Text, new QrBounds(xs.Min(), ys.Min(), xs.Max(), ys.Max())));
         }
 
-        return found;
+        return QrOrder.ByPosition(found).DistinctBy(f => f.Text, StringComparer.Ordinal).ToList();
     }
 }

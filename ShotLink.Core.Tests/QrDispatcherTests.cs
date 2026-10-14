@@ -92,8 +92,10 @@ public class QrDispatcherTests
     [Fact]
     public void 直接開くのは一分に三件まで_超えた分は通知だけ()
     {
-        var urls = Enumerable.Range(1, 5).Select(i => $"https://a.example/{i}").ToArray();
-        var ds = _dispatcher.Decide(urls, Open);
+        // 1枚に 4 件以上だとまとめる側（QrDispatcherSummarizeTests）になるので、写真 2 枚に分ける
+        var first = _dispatcher.Decide(["https://a.example/1", "https://a.example/2", "https://a.example/3"], Open);
+        var second = _dispatcher.Decide(["https://a.example/4", "https://a.example/5"], Open);
+        var ds = first.Concat(second).ToList();
 
         Assert.Equal(
             [QrAction.Opened, QrAction.Opened, QrAction.Opened, QrAction.NotifyToOpen, QrAction.NotifyToOpen],
@@ -117,5 +119,74 @@ public class QrDispatcherTests
         _dispatcher.Decide(["https://a.example/1", "https://a.example/2", "https://a.example/3"], NoOpen);
         var ds = _dispatcher.Decide(["https://a.example/4", "https://a.example/5", "https://a.example/6"], Open);
         Assert.All(ds, d => Assert.Equal(QrAction.Opened, d.Action));
+    }
+}
+
+// 仕様書 3.5：1枚に 4 件以上あれば通知を1件にまとめる
+public class QrDispatcherSummarizeTests
+{
+    static readonly DispatchOptions Open = new(OpenDirectly: true, NotifyNonUrl: true);
+
+    readonly FakeClock _clock = new();
+    readonly QrDispatcher _dispatcher;
+
+    public QrDispatcherSummarizeTests() => _dispatcher = QrDispatcher.CreateDefault(_clock);
+
+    static string[] Urls(int n, string prefix = "u") => Enumerable.Range(1, n).Select(i => $"https://a.example/{prefix}{i}").ToArray();
+
+    [Fact]
+    public void 三件まではまとめない()
+    {
+        Assert.False(_dispatcher.Decide(Urls(3), Open).Summarized);
+    }
+
+    [Fact]
+    public void 四件からまとめ_既定では直接開かない()
+    {
+        var batch = _dispatcher.Decide(Urls(4), Open);
+        Assert.True(batch.Summarized);
+        Assert.All(batch, d => Assert.Equal(QrAction.NotifyToOpen, d.Action));
+        Assert.All(batch, d => Assert.False(d.RateLimited));
+    }
+
+    [Fact]
+    public void まとめたときも開く設定なら_位置の順に上限まで開く()
+    {
+        var batch = _dispatcher.Decide(Urls(5), Open with { OpenWhenSummarized = true });
+        Assert.True(batch.Summarized);
+        Assert.Equal(
+            [QrAction.Opened, QrAction.Opened, QrAction.Opened, QrAction.NotifyToOpen, QrAction.NotifyToOpen],
+            batch.Select(d => d.Action));
+    }
+
+    [Fact]
+    public void まとめたときに開かなかった分は上限を使わない()
+    {
+        _dispatcher.Decide(Urls(10, "a"), Open);
+        var next = _dispatcher.Decide(Urls(3, "b"), Open);
+        Assert.All(next, d => Assert.Equal(QrAction.Opened, d.Action));
+    }
+
+    [Fact]
+    public void 数えるのは除外したあとの件数()
+    {
+        // 前の写真で見た3件と新しい1件：新しいのは1件だけなのでまとめない
+        _dispatcher.Decide(Urls(3), Open);
+        var batch = _dispatcher.Decide([.. Urls(3), "https://a.example/new"], Open);
+        Assert.False(batch.Summarized);
+        Assert.Single(batch);
+    }
+
+    [Fact]
+    public void 文字列も件数に入る()
+    {
+        Assert.True(_dispatcher.Decide(["a", "b", "c", "https://a.example/"], Open).Summarized);
+    }
+
+    [Fact]
+    public void 渡した順を保つ()
+    {
+        var batch = _dispatcher.Decide(["z", "https://a.example/", "a", "m"], Open);
+        Assert.Equal(["z", "https://a.example/", "a", "m"], batch.Select(d => d.Content.Text));
     }
 }

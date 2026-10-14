@@ -38,6 +38,18 @@ public sealed class History
         }
     }
 
+    /// <summary>履歴を全部消す（設定の窓の「履歴を消す」。仕様書 6章）</summary>
+    public void Clear()
+    {
+        lock (_lock)
+        {
+            _entries.Clear();
+            _store.Save([]);
+        }
+
+        Changed?.Invoke();
+    }
+
     public void Add(HistoryEntry entry)
     {
         lock (_lock)

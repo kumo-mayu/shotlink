@@ -36,12 +36,12 @@ if (dumpAt >= 0)
         var img = scene.Blur(s.Blur).Noise(6).Build();
         // VRChat の写真と同じ RGBA で書く（読み込みでカラーを灰色に直す道を通す）
         PngWriter.Write(Path.Combine(dir, s.Name + ".png"), img, rgba: true);
-        Console.WriteLine($"{s.Name}: 読めた {string.Join(", ", reader.Read(img))}");
+        Console.WriteLine($"{s.Name}: 読めた {string.Join(", ", reader.Read(img).Select(f => f.Text))}");
     }
 
     var big = new SceneBuilder(7680, 4320, 9).Place(new QrPlacement("https://example.com/shotlink/8k", 3000, 2000, 900, 10, 20, 0)).Blur(4).Noise(6).Build();
     PngWriter.Write(Path.Combine(dir, "8k-photo.png"), big, rgba: true);
-    Console.WriteLine($"8k-photo: 読めた {string.Join(", ", reader.Read(big))}");
+    Console.WriteLine($"8k-photo: 読めた {string.Join(", ", reader.Read(big).Select(f => f.Text))}");
     return;
 }
 
@@ -101,7 +101,7 @@ foreach (var res in resolutions)
         var sw = Stopwatch.StartNew();
         var texts = reader.Read(image);
         sw.Stop();
-        rows.Add(new Row(res.Name, payload.Name, ratio, pose.Name, blur, texts.Contains(payload.Text), sw.Elapsed.TotalMilliseconds));
+        rows.Add(new Row(res.Name, payload.Name, ratio, pose.Name, blur, texts.Any(f => f.Text == payload.Text), sw.Elapsed.TotalMilliseconds));
     }
 
     Console.Error.WriteLine($"  {res.Name} 済み");

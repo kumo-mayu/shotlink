@@ -14,6 +14,9 @@ public enum ToastKind
 
     /// <summary>クリックで設定の窓を開く（フォルダが無いなど）</summary>
     Settings,
+
+    /// <summary>まとめた通知。クリックでその写真の QR の一覧を開く（中身は写真の名前）</summary>
+    List,
 }
 
 /// <summary>トースト通知（仕様書 8章 [決定]）。クリックは裏のスレッドで届くので、受け取る側が画面のスレッドへ渡す</summary>
@@ -57,6 +60,12 @@ sealed class Toasts : IDisposable
         Show(kind, decision.Content.Text, text.Title, text.Body, text.Footer);
     }
 
+    public void ShowBatch(QrBatch batch, string photo)
+    {
+        var text = ToastText.ForBatch(batch);
+        Show(ToastKind.List, Path.GetFileName(photo), text.Title, text.Body, text.Footer);
+    }
+
     public void ShowSettingsHint(string title, string body) => Show(ToastKind.Settings, "", title, body, "クリックで設定を開きます");
 
     /// <summary>Windows への通知の登録を消す（仕様書 8章。exe を消す前に押してもらう）</summary>
@@ -82,7 +91,7 @@ sealed class Toasts : IDisposable
             builder.Show();
 
             // 出したことも残す。席を外している間の確かめで「出たか」をログで追えるように。中身は書かずホスト名まで（仕様書 7章）
-            _log($"通知：{kind}：{(kind == ToastKind.Url ? title : "（中身は書かない）")}");
+            _log($"通知：{kind}：{(kind is ToastKind.Url or ToastKind.List ? title : "（中身は書かない）")}");
         }
         catch (Exception e)
         {

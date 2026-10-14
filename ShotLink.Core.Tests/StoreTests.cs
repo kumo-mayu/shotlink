@@ -144,6 +144,18 @@ public class HistoryTests
     }
 
     [Fact]
+    public void 消すと空になり_読み直しても空()
+    {
+        using var dir = new TempDir();
+        var path = dir.Combine("history.json");
+        var h = new History(path);
+        h.Add(Entry("a", 1));
+        h.Clear();
+        Assert.Empty(h.Recent(10));
+        Assert.Empty(new History(path).Recent(10));
+    }
+
+    [Fact]
     public void 残すのは百件まで()
     {
         using var dir = new TempDir();

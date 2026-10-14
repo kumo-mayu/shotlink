@@ -25,6 +25,7 @@ sealed class TrayContext : ApplicationContext, IQrSink
     HashSet<WatchTarget> _missingNotified = [];
     Settings _settings;
     SettingsForm? _settingsForm;
+    QrListForm? _listForm;
     bool _notificationsBlocked;
 
     public TrayContext(AppServices app, SingleInstance instance)
@@ -66,29 +67,54 @@ sealed class TrayContext : ApplicationContext, IQrSink
 
     // ---- 写真の処理から（裏のスレッド） ----
 
-    public void Handle(QrDecision decision, string photo)
+    public void Handle(QrBatch batch, string photo)
     {
         _ui.Post(_ =>
         {
-            _app.History.Add(new HistoryEntry(decision.Content.Text, DateTimeOffset.Now, Path.GetFileName(photo)));
-            switch (decision.Action)
+            // 履歴は新しい物を先頭に足すので、位置の順の最後から足す。メニューと一覧で写真の中の順に並ぶ
+            var now = DateTimeOffset.Now;
+            foreach (var decision in batch.Reverse())
             {
-                case QrAction.Opened:
-                    if (!_opener.TryOpen(decision.Content))
-                    {
-                        // 振り分けで URL と決めたのに開く直前の確かめで落ちることは起きないはず。起きたら開かずに知らせる
-                        _toasts.ShowQr(decision with { Action = QrAction.NotifyToOpen });
-                        return;
-                    }
+                _app.History.Add(new HistoryEntry(decision.Content.Text, now, Path.GetFileName(photo)));
+            }
 
-                    _toasts.ShowQr(decision);
-                    break;
-                case QrAction.NotifyToOpen:
-                case QrAction.NotifyToCopy:
-                    _toasts.ShowQr(decision);
-                    break;
+            if (batch.Summarized)
+            {
+                foreach (var decision in batch.Where(d => d.Action == QrAction.Opened))
+                {
+                    _opener.TryOpen(decision.Content);
+                }
+
+                _toasts.ShowBatch(batch, photo);
+                return;
+            }
+
+            foreach (var decision in batch)
+            {
+                Show(decision);
             }
         }, null);
+    }
+
+    void Show(QrDecision decision)
+    {
+        switch (decision.Action)
+        {
+            case QrAction.Opened:
+                if (!_opener.TryOpen(decision.Content))
+                {
+                    // 振り分けで URL と決めたのに開く直前の確かめで落ちることは起きないはず。起きたら開かずに知らせる
+                    _toasts.ShowQr(decision with { Action = QrAction.NotifyToOpen });
+                    return;
+                }
+
+                _toasts.ShowQr(decision);
+                break;
+            case QrAction.NotifyToOpen:
+            case QrAction.NotifyToCopy:
+                _toasts.ShowQr(decision);
+                break;
+        }
     }
 
     // ---- 画面のスレッド ----
@@ -110,6 +136,11 @@ sealed class TrayContext : ApplicationContext, IQrSink
                 break;
             case ToastKind.Settings:
                 OpenSettings();
+                break;
+            case ToastKind.List:
+                var fromPhoto = _app.History.Recent(History.Capacity).Where(e => e.Photo == text).ToList();
+                // ShotLink を起動し直したあとや履歴を消したあとは、その写真の分が無い。そのときは履歴の全部を見せる
+                OpenList(fromPhoto.Count > 0 ? $"QR の一覧（{text}）" : "読んだ QR の一覧", fromPhoto.Count > 0 ? fromPhoto : _app.History.Recent(History.Capacity));
                 break;
         }
     }
@@ -163,6 +194,8 @@ sealed class TrayContext : ApplicationContext, IQrSink
             recent.DropDownItems.Add(item);
         }
 
+        recent.DropDownItems.Add(new ToolStripSeparator());
+        recent.DropDownItems.Add("すべて表示…", null, (_, _) => OpenList("読んだ QR の一覧", _app.History.Recent(History.Capacity)));
         _menu.Items.Add(recent);
         _menu.Items.Add(new ToolStripSeparator());
 
@@ -225,6 +258,14 @@ sealed class TrayContext : ApplicationContext, IQrSink
         Process.Start(new ProcessStartInfo("explorer.exe") { ArgumentList = { folder }, UseShellExecute = false })?.Dispose();
     }
 
+    void OpenList(string title, IReadOnlyList<HistoryEntry> entries)
+    {
+        _listForm?.Close();
+        _listForm = new QrListForm(title, entries, text => OpenRecent(text), Copy);
+        _listForm.Show();
+        _listForm.Activate();
+    }
+
     void OpenSettings()
     {
         if (_settingsForm is { IsDisposed: false })
@@ -234,7 +275,7 @@ sealed class TrayContext : ApplicationContext, IQrSink
         }
 
         CheckNotifications();
-        _settingsForm = new SettingsForm(_settings, _app, VrchatFolder(), _notificationsBlocked, SaveSettings, UnregisterAndExit);
+        _settingsForm = new SettingsForm(_settings, _app, VrchatFolder(), _notificationsBlocked, SaveSettings, UnregisterAndExit, ClearHistory);
         _settingsForm.Show();
         _settingsForm.Activate();
     }
@@ -247,6 +288,13 @@ sealed class TrayContext : ApplicationContext, IQrSink
         _toasts.PlaySound = settings.PlaySound;
         _app.Startup.Set(settings.StartWithWindows);
         ApplyTargets();
+    }
+
+    void ClearHistory()
+    {
+        _app.History.Clear();
+        _listForm?.Close();
+        _app.Log.Write("履歴を消した");
     }
 
     void UnregisterAndExit()
@@ -342,6 +390,7 @@ sealed class TrayContext : ApplicationContext, IQrSink
         _processor.DisposeAsync().AsTask().Wait(TimeSpan.FromSeconds(5));
         _toasts.Dispose();
         _settingsForm?.Close();
+        _listForm?.Close();
         _app.Log.Write("終了");
         base.ExitThreadCore();
     }

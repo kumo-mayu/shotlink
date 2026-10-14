@@ -24,11 +24,25 @@ public sealed record ToastText(string Title, string Body, string Footer)
         };
     }
 
+    /// <summary>まとめた通知（仕様書 3.5）。中身の頭の3件を並べ、残りは件数だけ</summary>
+    public static ToastText ForBatch(QrBatch batch)
+    {
+        const int shown = 3;
+        var labels = batch.Take(shown).Select(d => d.Content.Host ?? Shorten(Flatten(d.Content.Text), 20));
+        var body = string.Join("、", labels) + (batch.Count > shown ? $"、ほか {batch.Count - shown} 件" : "");
+        var opened = batch.Count(d => d.Action == QrAction.Opened);
+        var footer = opened > 0 ? $"{opened} 件をブラウザで開きました。クリックで一覧を開きます" : "クリックで一覧を開きます";
+        return new($"QR を {batch.Count} 件読みました", body, footer);
+    }
+
     /// <summary>メニューの「最近読んだ QR」の1行。改行をつぶし、長ければ切る</summary>
     public static string MenuLabel(string text, int limit = 60) =>
-        Shorten(string.Join(' ', text.Split(['\r', '\n', '\t'], StringSplitOptions.RemoveEmptyEntries)).Trim(), limit)
-            // メニューの & は次の文字の下線（アクセスキー）になる
-            .Replace("&", "&&");
+        // メニューの & は次の文字の下線（アクセスキー）になる
+        Shorten(Flatten(text), limit).Replace("&", "&&");
+
+    /// <summary>改行とタブをつぶして1行にする</summary>
+    public static string Flatten(string text) =>
+        string.Join(' ', text.Split(['\r', '\n', '\t'], StringSplitOptions.RemoveEmptyEntries)).Trim();
 
     static string Shorten(string text, int limit) =>
         text.Length <= limit ? text : string.Concat(text.AsSpan(0, limit - 1), "…");

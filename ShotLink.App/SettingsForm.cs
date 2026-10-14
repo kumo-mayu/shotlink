@@ -10,8 +10,10 @@ sealed class SettingsForm : Form
     readonly AppServices _app;
     readonly Action<Settings> _save;
     readonly Action _unregisterAndExit;
+    readonly Action _clearHistory;
 
     readonly CheckBox _openDirectly = new() { Text = "URL を直接ブラウザで開く", AutoSize = true };
+    readonly CheckBox _openWhenSummarized = new() { Text = "1枚に 4 件以上あって通知をまとめたときも開く", AutoSize = true, Margin = new Padding(20, 0, 3, 3) };
     readonly CheckBox _notifyNonUrl = new() { Text = "URL 以外の QR も知らせる", AutoSize = true };
     readonly CheckBox _playSound = new() { Text = "通知の音を鳴らす", AutoSize = true };
     readonly CheckBox _watchVrchat = new() { Text = "VRChat の写真フォルダを見張る", AutoSize = true };
@@ -27,12 +29,13 @@ sealed class SettingsForm : Form
     readonly CheckBox _startWithWindows = new() { Text = "Windows の起動時に ShotLink を起動する", AutoSize = true };
 
     public SettingsForm(Settings settings, AppServices app, string vrchatFolder, bool notificationsBlocked,
-        Action<Settings> save, Action unregisterAndExit)
+        Action<Settings> save, Action unregisterAndExit, Action clearHistory)
     {
         _original = settings;
         _app = app;
         _save = save;
         _unregisterAndExit = unregisterAndExit;
+        _clearHistory = clearHistory;
 
         Text = "ShotLink の設定";
         Icon = Icon.ExtractAssociatedIcon(Environment.ProcessPath!);
@@ -58,6 +61,8 @@ sealed class SettingsForm : Form
         var read = Group("QR を読んだとき");
         read.Controls.Add(_openDirectly);
         read.Controls.Add(Note("ON にすると、知らない人が見せた QR の URL も確かめずに開きます。"));
+        read.Controls.Add(_openWhenSummarized);
+        _openDirectly.CheckedChanged += (_, _) => _openWhenSummarized.Enabled = _openDirectly.Checked;
         read.Controls.Add(_notifyNonUrl);
         read.Controls.Add(_playSound);
         root.Controls.Add(read.Parent!);
@@ -98,6 +103,11 @@ sealed class SettingsForm : Form
             _startWithWindows.Enabled = false;
             other.Controls.Add(Note("確かめ用の起動のため、変更できません。"));
         }
+
+        var clearHistoryButton = new Button { Text = "履歴を消す", AutoSize = true, Margin = new Padding(3, 8, 3, 3) };
+        clearHistoryButton.Click += (_, _) => ClearHistory();
+        other.Controls.Add(clearHistoryButton);
+        other.Controls.Add(Note("読んだ QR の中身は、このパソコンの中に 100 件まで残ります。"));
 
         var unregister = new Button { Text = "Windows への通知の登録を消して終了", AutoSize = true, Margin = new Padding(3, 8, 3, 3) };
         unregister.Click += (_, _) => Unregister();
@@ -141,6 +151,8 @@ sealed class SettingsForm : Form
     void Fill(Settings s)
     {
         _openDirectly.Checked = s.OpenDirectly;
+        _openWhenSummarized.Checked = s.OpenWhenSummarized;
+        _openWhenSummarized.Enabled = s.OpenDirectly;
         _notifyNonUrl.Checked = s.NotifyNonUrl;
         _playSound.Checked = s.PlaySound;
         _watchVrchat.Checked = s.WatchVrchat;
@@ -154,6 +166,7 @@ sealed class SettingsForm : Form
     Settings Collect() => _original with
     {
         OpenDirectly = _openDirectly.Checked,
+        OpenWhenSummarized = _openWhenSummarized.Checked,
         NotifyNonUrl = _notifyNonUrl.Checked,
         PlaySound = _playSound.Checked,
         WatchVrchat = _watchVrchat.Checked,
@@ -176,6 +189,15 @@ sealed class SettingsForm : Form
         }
 
         _folders.Items.Add(new ListViewItem(path));
+    }
+
+    void ClearHistory()
+    {
+        var answer = MessageBox.Show(this, "読んだ QR の履歴を全部消します。元に戻せません。", "ShotLink", MessageBoxButtons.OKCancel, MessageBoxIcon.None);
+        if (answer == DialogResult.OK)
+        {
+            _clearHistory();
+        }
     }
 
     void Unregister()

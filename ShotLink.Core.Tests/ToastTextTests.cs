@@ -74,3 +74,27 @@ public class LogWriterTests
         Assert.Contains("こんにちは", File.ReadAllText(Path.Combine(dir.Path, $"{clock.Now:yyyy-MM-dd}.log")));
     }
 }
+
+public class ToastTextBatchTests
+{
+    [Fact]
+    public void まとめた通知は件数と頭の三件()
+    {
+        var dispatcher = QrDispatcher.CreateDefault(new FakeClock());
+        var batch = dispatcher.Decide(["https://a.example/", "こんにちは\nせかい", "https://b.example/x", "https://c.example/", "https://d.example/"],
+            new DispatchOptions(OpenDirectly: false, NotifyNonUrl: true));
+        var t = ToastText.ForBatch(batch);
+        Assert.Equal("QR を 5 件読みました", t.Title);
+        Assert.Equal("a.example、こんにちは せかい、b.example、ほか 2 件", t.Body);
+        Assert.Equal("クリックで一覧を開きます", t.Footer);
+    }
+
+    [Fact]
+    public void 開いた件数を書く()
+    {
+        var dispatcher = QrDispatcher.CreateDefault(new FakeClock());
+        var batch = dispatcher.Decide(Enumerable.Range(1, 6).Select(i => $"https://a.example/{i}"),
+            new DispatchOptions(OpenDirectly: true, NotifyNonUrl: true, OpenWhenSummarized: true));
+        Assert.Equal("3 件をブラウザで開きました。クリックで一覧を開きます", ToastText.ForBatch(batch).Footer);
+    }
+}
