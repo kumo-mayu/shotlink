@@ -198,6 +198,14 @@ public sealed class PhotoProcessor : IAsyncDisposable
         }
 
         var batch = _dispatcher.Decide(texts, _options());
+
+        // 同じ中身を少し前に見たので知らせなかった物も残す。残さないと「反応しない」と「QR が無い」の見分けがつかない
+        // （2026-10-14、作者の実機で、同じ QR を撮り続けて黙っていたのを、読めていないと取り違えた）
+        foreach (var skipped in texts.Distinct(StringComparer.Ordinal).Except(batch.Select(d => d.Content.Text), StringComparer.Ordinal))
+        {
+            Log($"QR：同じ中身を少し前に見たので知らせない：{QrClassifier.Classify(skipped).Host ?? "（URL ではない）"}：{Path.GetFileName(path)}");
+        }
+
         foreach (var decision in batch)
         {
             // ログに中身は書かない。URL ならホスト名まで（仕様書 7章）

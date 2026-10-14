@@ -172,6 +172,17 @@ public class PhotoProcessorTests
         Assert.Null(stopped);
     }
 
+    [Fact]
+    public async Task 同じ中身で知らせなかった物も_ホスト名までログに残す()
+    {
+        var p = Create(new() { ["1.png"] = Photo("https://a.example/secret"), ["2.png"] = Photo("https://a.example/secret") });
+        p.Enqueue("1.png");
+        p.Enqueue("2.png");
+        await p.CompleteAsync();
+        Assert.Contains(_log, l => l.Contains("同じ中身") && l.Contains("a.example") && l.Contains("2.png"));
+        Assert.DoesNotContain(_log, l => l.Contains("secret"));
+    }
+
     sealed class ThrowOnceSink(Action onCall) : IQrSink
     {
         bool _thrown;
