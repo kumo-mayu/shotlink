@@ -236,18 +236,18 @@ sealed class TrayContext : ApplicationContext, IQrSink
         openDirectly.Click += (_, _) => SaveSettings(_settings with { OpenDirectly = openDirectly.Checked });
         _menu.Items.Add(openDirectly);
 
-        var pause = new ToolStripMenuItem(_watch.IsPaused ? "見張りを再開" : "見張りを一時停止");
+        var pause = new ToolStripMenuItem(_watch.IsPaused ? "監視を再開" : "監視を一時停止");
         pause.Click += (_, _) =>
         {
             if (_watch.IsPaused)
             {
                 _watch.Resume();
-                _app.Log.Write("見張りを再開");
+                _app.Log.Write("監視を再開");
             }
             else
             {
                 _watch.Pause();
-                _app.Log.Write("見張りを一時停止");
+                _app.Log.Write("監視を一時停止");
             }
 
             UpdateState();
@@ -351,8 +351,8 @@ sealed class TrayContext : ApplicationContext, IQrSink
         foreach (var bad in _watch.SetTargets(targets))
         {
             // 手で直した settings.json の壊れた行など。この1つだけを外し、ほかのフォルダは見張る
-            _app.Log.Write("見張る場所として使えない行を外した");
-            _toasts.ShowSettingsHint("見張れないフォルダがあります", ToastText.Flatten(bad.Path));
+            _app.Log.Write("監視する場所として使えない行を外した");
+            _toasts.ShowSettingsHint("監視できないフォルダがあります", ToastText.Flatten(bad.Path));
         }
         UpdateState();
     }
@@ -375,7 +375,7 @@ sealed class TrayContext : ApplicationContext, IQrSink
         foreach (var target in missing.Where(t => !_missingNotified.Contains(t)))
         {
             _app.Log.Write($"フォルダが無い：{target.Path}");
-            _toasts.ShowSettingsHint("見張るフォルダが見つかりません", $"{target.Path}\nできたら自動で見張り始めます");
+            _toasts.ShowSettingsHint("監視するフォルダが見つかりません", $"{target.Path}\nできたら自動で監視を始めます");
         }
 
         _missingNotified = missing.ToHashSet();
@@ -388,7 +388,7 @@ sealed class TrayContext : ApplicationContext, IQrSink
         }
         else if (states.Count == 0)
         {
-            (badge, tip) = (IconBadge.Warning, "ShotLink：見張るフォルダがありません");
+            (badge, tip) = (IconBadge.Warning, "ShotLink：監視するフォルダがありません");
         }
         else if (missing.Count > 0)
         {
@@ -404,7 +404,7 @@ sealed class TrayContext : ApplicationContext, IQrSink
         }
         else
         {
-            (badge, tip) = (IconBadge.None, "ShotLink：見張っています");
+            (badge, tip) = (IconBadge.None, "ShotLink：監視しています");
         }
 
         _icon.Icon = IconFor(badge);

@@ -25,7 +25,7 @@ sealed class SettingsForm : Form
     readonly CheckBox _openWhenSummarized = new() { Text = "まとめた場合にもすべての URL を開く", AutoSize = true, Margin = new Padding(40, 0, 3, 3) };
     readonly CheckBox _urlOnly = new() { Text = "URL のみ通知する", AutoSize = true };
     readonly CheckBox _silent = new() { Text = "サイレント通知にする", AutoSize = true };
-    readonly CheckBox _watchVrchat = new() { Text = "VRChat の写真フォルダを見張る", AutoSize = true };
+    readonly CheckBox _watchVrchat = new() { Text = "VRChat の写真フォルダを監視する", AutoSize = true };
     readonly ListView _folders = new()
     {
         View = View.Details,
@@ -89,11 +89,11 @@ sealed class SettingsForm : Form
         root.Controls.Add(read.Parent!);
 
         // ---- 見張る場所 ----
-        var watch = Group("見張る場所");
+        var watch = Group("監視する場所");
         watch.Controls.Add(_watchVrchat);
         watch.Controls.Add(Note(vrchatFolder));
 
-        watch.Controls.Add(new Label { Text = "追加で見張るフォルダ（チェックを付けるとサブフォルダも見張ります）", AutoSize = true, Margin = new Padding(3, 10, 3, 3) });
+        watch.Controls.Add(new Label { Text = "追加で監視するフォルダ（チェックを付けるとサブフォルダも監視します）", AutoSize = true, Margin = new Padding(3, 10, 3, 3) });
         _folders.Columns.Add("フォルダ", 420);
         _folders.Width = 440;
         watch.Controls.Add(_folders);
@@ -290,7 +290,7 @@ sealed class SettingsForm : Form
 
     void AddFolder()
     {
-        using var dialog = new FolderBrowserDialog { Description = "見張るフォルダを選んでください", UseDescriptionForTitle = true };
+        using var dialog = new FolderBrowserDialog { Description = "監視するフォルダを選んでください", UseDescriptionForTitle = true };
         if (dialog.ShowDialog(this) != DialogResult.OK)
         {
             return;
