@@ -20,9 +20,9 @@ sealed class SettingsForm : Form
     IReadOnlyList<string> _allowedSites = [];
     readonly CheckBox _preventReopen = new() { Text = "同じ URL は連続して開かない", AutoSize = true, Margin = new Padding(20, 0, 3, 3) };
     readonly NumericUpDown _reopenSeconds = new() { Minimum = QrPolicy.MinReopenSeconds, Maximum = QrPolicy.MaxReopenSeconds, Width = 64 };
-    readonly CheckBox _summarize = new() { Text = "一枚に複数ある場合に通知をまとめる", AutoSize = true, Margin = new Padding(20, 0, 3, 3) };
+    readonly CheckBox _summarize = new() { Text = "一枚に複数ある場合に通知をまとめる", AutoSize = true };
     readonly NumericUpDown _summarizeThreshold = new() { Minimum = QrPolicy.MinSummarizeThreshold, Maximum = QrPolicy.MaxSummarizeThreshold, Width = 48 };
-    readonly CheckBox _openWhenSummarized = new() { Text = "まとめた場合にもすべての URL を開く", AutoSize = true, Margin = new Padding(40, 0, 3, 3) };
+    readonly CheckBox _openWhenSummarized = new() { Text = "まとめた通知の URL もすべて開く", AutoSize = true, Margin = new Padding(20, 0, 3, 3) };
     readonly CheckBox _urlOnly = new() { Text = "URL のみ通知する", AutoSize = true };
     readonly CheckBox _silent = new() { Text = "サイレント通知にする", AutoSize = true };
     readonly CheckBox _watchVrchat = new() { Text = "VRChat の写真フォルダを監視する", AutoSize = true };
@@ -77,9 +77,11 @@ sealed class SettingsForm : Form
         _editSites.Click += (_, _) => EditSites();
         read.Controls.Add(_editSites);
         read.Controls.Add(Row(_preventReopen, _reopenSeconds, "秒"));
-        // まとめるのは通知の話なので、ブラウザで開かないときも効く。「開く」の ON・OFF で止めない
-        read.Controls.Add(Row(_summarize, _summarizeThreshold, "件以上"));
+        // 開き方の設定なので「開く」の下に置き、「開く」と「まとめる」が両方 ON のときだけ触れる。
+        // 「まとめる」の子として下に置くと、通知の設定の下に開き方が来て意味の親子がずれた（ユーザー 2026-10-17）
         read.Controls.Add(_openWhenSummarized);
+        // まとめるのは通知の話なので、ブラウザで開かないときも効く。「URL のみ通知する」と同じ段に置き、すぐ上の子と隣り合わせる
+        read.Controls.Add(Row(_summarize, _summarizeThreshold, "件以上"));
         read.Controls.Add(_urlOnly);
         read.Controls.Add(_silent);
         foreach (var box in new[] { _openDirectly, _allowedOnly, _preventReopen, _summarize })
