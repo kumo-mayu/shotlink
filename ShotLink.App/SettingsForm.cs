@@ -33,7 +33,6 @@ sealed class SettingsForm : Form
         FullRowSelect = true,
         HeaderStyle = ColumnHeaderStyle.Nonclickable,
         Height = 110,
-        Dock = DockStyle.Fill,
     };
     readonly CheckBox _startWithWindows = new() { Text = "Windows の起動時に ShotLink を起動する", AutoSize = true };
 
@@ -49,18 +48,20 @@ sealed class SettingsForm : Form
 
         Text = "ShotLink の設定";
         Icon = Icon.ExtractAssociatedIcon(Environment.ProcessPath!);
-        FormBorderStyle = FormBorderStyle.FixedDialog;
+        // 中身に合わせて伸び縮みさせると、組を畳むたびに横幅まで変わって落ち着かなかった（ユーザー 2026-10-17）。
+        // 大きさは人がドラッグで決め、収まらない分はスクロールする
+        FormBorderStyle = FormBorderStyle.Sizable;
         MaximizeBox = false;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
         AutoScaleMode = AutoScaleMode.Dpi;
-        AutoSize = true;
-        AutoSizeMode = AutoSizeMode.GrowAndShrink;
         Padding = new Padding(12);
         Font = SystemFonts.MessageBoxFont;
 
-        var root = new TableLayoutPanel { ColumnCount = 1, AutoSize = true, Dock = DockStyle.Fill };
-        Controls.Add(root);
+        _scroll = new Panel { Dock = DockStyle.Fill, AutoScroll = true };
+        var root = new TableLayoutPanel { ColumnCount = 1, AutoSize = true, Dock = DockStyle.Top };
+        _root = root;
+        _scroll.Controls.Add(root);
 
         if (notificationsBlocked)
         {
@@ -156,7 +157,9 @@ sealed class SettingsForm : Form
         root.Controls.Add(about.Parent!);
 
         // ---- OK・キャンセル ----
-        var buttons = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.RightToLeft, Dock = DockStyle.Fill };
+        // スクロールしても OK・キャンセルはいつも見えるよう、スクロールの外の下に置く
+        var buttons = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.RightToLeft, Dock = DockStyle.Bottom, Padding = new Padding(0, 8, 0, 0) };
+        _buttons = buttons;
         var cancel = new Button { Text = "キャンセル", AutoSize = true, DialogResult = DialogResult.Cancel };
         var ok = new Button { Text = "OK", AutoSize = true };
         ok.Click += (_, _) =>
@@ -167,11 +170,47 @@ sealed class SettingsForm : Form
         cancel.Click += (_, _) => Close();
         buttons.Controls.Add(cancel);
         buttons.Controls.Add(ok);
-        root.Controls.Add(buttons);
+        Controls.Add(_scroll);
+        Controls.Add(buttons);
+        _scroll.BringToFront();
         AcceptButton = ok;
         CancelButton = cancel;
 
         Fill(settings);
+        Load += (_, _) => FitToContent();
+        _scroll.Resize += (_, _) => StretchFolders();
+    }
+
+    readonly Panel _scroll;
+    readonly TableLayoutPanel _root;
+    readonly FlowLayoutPanel _buttons;
+    int _folderSlack = -1;
+
+    /// <summary>
+    /// 最初は、全部の組を開いた中身がちょうど入る大きさにする（画面より高ければ画面に収める）。
+    /// それより狭くすると字が切れるので、横はそこまでしか縮めさせない
+    /// </summary>
+    void FitToContent()
+    {
+        var content = _root.PreferredSize;
+        var width = content.Width + SystemInformation.VerticalScrollBarWidth + Padding.Horizontal;
+        var height = content.Height + _buttons.PreferredSize.Height + Padding.Vertical;
+        var chrome = Size - ClientSize;
+        var area = Screen.FromControl(this).WorkingArea;
+        ClientSize = new Size(width, Math.Min(height, area.Height - chrome.Height));
+        MinimumSize = new Size(Width, Math.Min(Height, LogicalToDeviceUnits(320)));
+        CenterToScreen();
+        _folderSlack = _scroll.ClientSize.Width - _folders.Width;
+    }
+
+    /// <summary>横に広げたら、フォルダの一覧も広げて長いパスを読みやすくする</summary>
+    void StretchFolders()
+    {
+        if (_folderSlack >= 0)
+        {
+            _folders.Width = Math.Max(LogicalToDeviceUnits(440), _scroll.ClientSize.Width - _folderSlack);
+            _folders.Columns[0].Width = _folders.ClientSize.Width - LogicalToDeviceUnits(4);
+        }
     }
 
     static string Version =>
