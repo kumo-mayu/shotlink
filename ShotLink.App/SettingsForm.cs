@@ -11,12 +11,20 @@ sealed class SettingsForm : Form
     readonly Action<Settings> _save;
     readonly Action _unregisterAndExit;
     readonly Action _clearHistory;
+    readonly Action _openHistory;
 
-    readonly CheckBox _openDirectly = new() { Text = "URL を直接ブラウザで開く", AutoSize = true };
-    readonly CheckBox _reopenSameUrl = new() { Text = "同じ URL を 60 秒以内にもう一度撮ったときも開く", AutoSize = true, Margin = new Padding(20, 0, 3, 3) };
-    readonly CheckBox _openWhenSummarized = new() { Text = "1枚に 4 件以上あって通知をまとめたときも、全部開く", AutoSize = true, Margin = new Padding(20, 0, 3, 3) };
-    readonly CheckBox _notifyNonUrl = new() { Text = "URL 以外の QR も知らせる", AutoSize = true };
-    readonly CheckBox _playSound = new() { Text = "通知の音を鳴らす", AutoSize = true };
+    // 字下げは、親の項目が ON のときだけ意味を持つ項目（20 で1段、40 で2段）
+    readonly CheckBox _openDirectly = new() { Text = "URL をブラウザで開く", AutoSize = true };
+    readonly CheckBox _allowedOnly = new() { Text = "ホワイトリストに絞る（自分で指定したサイトのみそのまま開きます）", AutoSize = true, Margin = new Padding(20, 0, 3, 3) };
+    readonly Button _editSites = new() { Text = "サイトを編集…", AutoSize = true, Margin = new Padding(40, 0, 3, 6) };
+    IReadOnlyList<string> _allowedSites = [];
+    readonly CheckBox _preventReopen = new() { Text = "同じ URL は連続して開かない", AutoSize = true, Margin = new Padding(20, 0, 3, 3) };
+    readonly NumericUpDown _reopenSeconds = new() { Minimum = QrPolicy.MinReopenSeconds, Maximum = QrPolicy.MaxReopenSeconds, Width = 64 };
+    readonly CheckBox _summarize = new() { Text = "一枚に複数ある場合に通知をまとめる", AutoSize = true, Margin = new Padding(20, 0, 3, 3) };
+    readonly NumericUpDown _summarizeThreshold = new() { Minimum = QrPolicy.MinSummarizeThreshold, Maximum = QrPolicy.MaxSummarizeThreshold, Width = 48 };
+    readonly CheckBox _openWhenSummarized = new() { Text = "まとめた場合にもすべての URL を開く", AutoSize = true, Margin = new Padding(40, 0, 3, 3) };
+    readonly CheckBox _urlOnly = new() { Text = "URL のみ通知する", AutoSize = true };
+    readonly CheckBox _silent = new() { Text = "サイレント通知にする", AutoSize = true };
     readonly CheckBox _watchVrchat = new() { Text = "VRChat の写真フォルダを見張る", AutoSize = true };
     readonly ListView _folders = new()
     {
@@ -30,13 +38,14 @@ sealed class SettingsForm : Form
     readonly CheckBox _startWithWindows = new() { Text = "Windows の起動時に ShotLink を起動する", AutoSize = true };
 
     public SettingsForm(Settings settings, AppServices app, string vrchatFolder, bool notificationsBlocked,
-        Action<Settings> save, Action unregisterAndExit, Action clearHistory)
+        Action<Settings> save, Action unregisterAndExit, Action clearHistory, Action openHistory)
     {
         _original = settings;
         _app = app;
         _save = save;
         _unregisterAndExit = unregisterAndExit;
         _clearHistory = clearHistory;
+        _openHistory = openHistory;
 
         Text = "ShotLink の設定";
         Icon = Icon.ExtractAssociatedIcon(Environment.ProcessPath!);
@@ -62,11 +71,21 @@ sealed class SettingsForm : Form
         var read = Group("QR を読んだとき");
         read.Controls.Add(_openDirectly);
         read.Controls.Add(Note("ON にすると、知らない人が見せた QR の URL も確かめずに開きます。"));
-        read.Controls.Add(_reopenSameUrl);
+        read.Controls.Add(_allowedOnly);
+        // 入力欄を窓の中に置くと、窓が 1080p の画面に収まらない高さになった（1074 px）。別の小さな窓で直す
+        _editSites.Click += (_, _) => EditSites();
+        read.Controls.Add(_editSites);
+        read.Controls.Add(Row(_preventReopen, _reopenSeconds, "秒"));
+        // まとめるのは通知の話なので、ブラウザで開かないときも効く。「開く」の ON・OFF で止めない
+        read.Controls.Add(Row(_summarize, _summarizeThreshold, "件以上"));
         read.Controls.Add(_openWhenSummarized);
-        _openDirectly.CheckedChanged += (_, _) => _reopenSameUrl.Enabled = _openWhenSummarized.Enabled = _openDirectly.Checked;
-        read.Controls.Add(_notifyNonUrl);
-        read.Controls.Add(_playSound);
+        read.Controls.Add(_urlOnly);
+        read.Controls.Add(_silent);
+        foreach (var box in new[] { _openDirectly, _allowedOnly, _preventReopen, _summarize })
+        {
+            box.CheckedChanged += (_, _) => UpdateEnabled();
+        }
+
         root.Controls.Add(read.Parent!);
 
         // ---- 見張る場所 ----
@@ -107,12 +126,18 @@ sealed class SettingsForm : Form
             other.Controls.Add(Note("確かめ用の起動のため、変更できません。"));
         }
 
-        var clearHistoryButton = new Button { Text = "履歴を消す", AutoSize = true, Margin = new Padding(3, 8, 3, 3) };
+        var historyButtons = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, Margin = new Padding(0, 8, 0, 0) };
+        var openHistoryButton = new Button { Text = "履歴を開く", AutoSize = true };
+        openHistoryButton.Click += (_, _) => _openHistory();
+        // 消すと戻せないので、赤い字で「開く」と見分けやすくする
+        var clearHistoryButton = new Button { Text = "履歴を消す", AutoSize = true, ForeColor = Color.FromArgb(0xC4, 0x2B, 0x1C) };
         clearHistoryButton.Click += (_, _) => ClearHistory();
-        other.Controls.Add(clearHistoryButton);
+        historyButtons.Controls.Add(openHistoryButton);
+        historyButtons.Controls.Add(clearHistoryButton);
+        other.Controls.Add(historyButtons);
         other.Controls.Add(Note("読んだ QR の中身は、このパソコンの中に 100 件まで残ります。"));
 
-        var unregister = new Button { Text = "Windows への通知の登録を消して終了", AutoSize = true, Margin = new Padding(3, 8, 3, 3) };
+        var unregister = new Button { Text = "通知の登録を消して終了する", AutoSize = true, Margin = new Padding(3, 8, 3, 3) };
         unregister.Click += (_, _) => Unregister();
         other.Controls.Add(unregister);
         other.Controls.Add(Note("ShotLink を消す前に押してください。次に起動すると、また登録されます。"));
@@ -123,6 +148,8 @@ sealed class SettingsForm : Form
         about.Controls.Add(new Label { Text = $"ShotLink {Version}", AutoSize = true });
         about.Controls.Add(Note("VRChat Inc. とは関係のない、非公式のツールです。"));
         about.Controls.Add(Note("ShotLink はネットにつながりません。写真も QR の中身も、どこへも送りません。"));
+        // 名称を使う画面ごとに載せる（デンソーウェーブの FAQ「登録商標文の掲載単位」）。文はその FAQ の和文の例のまま
+        about.Controls.Add(Note("QRコードは株式会社デンソーウェーブの登録商標です。"));
         var notices = new LinkLabel { Text = "同梱しているライブラリのライセンス", AutoSize = true };
         notices.LinkClicked += (_, _) => ShowNotices();
         about.Controls.Add(notices);
@@ -154,11 +181,18 @@ sealed class SettingsForm : Form
     void Fill(Settings s)
     {
         _openDirectly.Checked = s.OpenDirectly;
+        _allowedOnly.Checked = s.OpenOnlyAllowedSites;
+        _allowedSites = s.AllowedSites;
+        ShowSiteCount();
+        // 設定の名前は前の版のまま、画面では裏返して見せる（Settings の説明）
+        _preventReopen.Checked = !s.ReopenSameUrl;
+        _reopenSeconds.Value = Math.Clamp(s.ReopenSeconds, QrPolicy.MinReopenSeconds, QrPolicy.MaxReopenSeconds);
+        _summarize.Checked = s.Summarize;
+        _summarizeThreshold.Value = Math.Clamp(s.SummarizeThreshold, QrPolicy.MinSummarizeThreshold, QrPolicy.MaxSummarizeThreshold);
         _openWhenSummarized.Checked = s.OpenWhenSummarized;
-        _reopenSameUrl.Checked = s.ReopenSameUrl;
-        _reopenSameUrl.Enabled = _openWhenSummarized.Enabled = s.OpenDirectly;
-        _notifyNonUrl.Checked = s.NotifyNonUrl;
-        _playSound.Checked = s.PlaySound;
+        _urlOnly.Checked = !s.NotifyNonUrl;
+        _silent.Checked = !s.PlaySound;
+        UpdateEnabled();
         _watchVrchat.Checked = s.WatchVrchat;
         _startWithWindows.Checked = _app.Startup.Allowed ? _app.Startup.IsEnabled() : s.StartWithWindows;
         foreach (var f in s.ExtraFolders)
@@ -170,14 +204,89 @@ sealed class SettingsForm : Form
     Settings Collect() => _original with
     {
         OpenDirectly = _openDirectly.Checked,
+        OpenOnlyAllowedSites = _allowedOnly.Checked,
+        AllowedSites = _allowedSites,
+        ReopenSameUrl = !_preventReopen.Checked,
+        ReopenSeconds = (int)_reopenSeconds.Value,
+        Summarize = _summarize.Checked,
+        SummarizeThreshold = (int)_summarizeThreshold.Value,
         OpenWhenSummarized = _openWhenSummarized.Checked,
-        ReopenSameUrl = _reopenSameUrl.Checked,
-        NotifyNonUrl = _notifyNonUrl.Checked,
-        PlaySound = _playSound.Checked,
+        NotifyNonUrl = !_urlOnly.Checked,
+        PlaySound = !_silent.Checked,
         WatchVrchat = _watchVrchat.Checked,
         StartWithWindows = _startWithWindows.Checked,
         ExtraFolders = _folders.Items.Cast<ListViewItem>().Select(i => new ExtraFolder(i.Text, i.Checked)).ToArray(),
     };
+
+    void UpdateEnabled()
+    {
+        var open = _openDirectly.Checked;
+        _allowedOnly.Enabled = _preventReopen.Enabled = open;
+        _editSites.Enabled = open && _allowedOnly.Checked;
+        _reopenSeconds.Enabled = open && _preventReopen.Checked;
+        _summarizeThreshold.Enabled = _summarize.Checked;
+        _openWhenSummarized.Enabled = open && _summarize.Checked;
+    }
+
+    void ShowSiteCount() => _editSites.Text = $"サイトを編集…（{_allowedSites.Count} 件）";
+
+    void EditSites()
+    {
+        using var form = new Form
+        {
+            Text = "ホワイトリスト",
+            FormBorderStyle = FormBorderStyle.FixedDialog,
+            MaximizeBox = false,
+            MinimizeBox = false,
+            StartPosition = FormStartPosition.CenterParent,
+            AutoScaleMode = AutoScaleMode.Dpi,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Padding = new Padding(12),
+            Font = Font,
+        };
+        var layout = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false, Dock = DockStyle.Fill };
+        layout.Controls.Add(new Label { Text = "そのまま開くサイトを、1行に1つ書きます。", AutoSize = true });
+        var box = new TextBox
+        {
+            Multiline = true,
+            ScrollBars = ScrollBars.Vertical,
+            AcceptsReturn = true,
+            Width = 400,
+            Height = 160,
+            Text = string.Join("\r\n", _allowedSites),
+        };
+        layout.Controls.Add(box);
+        layout.Controls.Add(Note("example.com と書くと、www.example.com なども開きます。一覧に無いサイトは、通知のクリックで開けます。", indent: 3));
+        var buttons = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.RightToLeft, Dock = DockStyle.Fill };
+        var cancel = new Button { Text = "キャンセル", AutoSize = true, DialogResult = DialogResult.Cancel };
+        var ok = new Button { Text = "OK", AutoSize = true, DialogResult = DialogResult.OK };
+        buttons.Controls.Add(cancel);
+        buttons.Controls.Add(ok);
+        layout.Controls.Add(buttons);
+        form.Controls.Add(layout);
+        form.CancelButton = cancel;
+        if (form.ShowDialog(this) != DialogResult.OK)
+        {
+            return;
+        }
+
+        // 書いたとおりではなく、比べる形（ホスト名）にそろえて見せる。何が効くのかを次に開いたときに分かるように
+        _allowedSites = (new Settings { AllowedSites = box.Lines }).Normalized().AllowedSites;
+        ShowSiteCount();
+    }
+
+    /// <summary>チェックと数の欄と単位を1行に並べる</summary>
+    static FlowLayoutPanel Row(CheckBox box, NumericUpDown number, string unit)
+    {
+        var row = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false, Margin = box.Margin };
+        box.Margin = new Padding(0, 3, 0, 0);
+        number.Margin = new Padding(6, 0, 3, 0);
+        row.Controls.Add(box);
+        row.Controls.Add(number);
+        row.Controls.Add(new Label { Text = unit, AutoSize = true, Margin = new Padding(0, 4, 3, 0) });
+        return row;
+    }
 
     void AddFolder()
     {
@@ -242,20 +351,42 @@ sealed class SettingsForm : Form
         form.ShowDialog(this);
     }
 
+    /// <summary>
+    /// 見出しを押すと中身を畳める組（ユーザーの案 2026-10-17）。項目が増えて窓が 1000 px を超えたので、
+    /// 使わない組を畳んで窓を縮められるようにする。窓は中身に合わせて伸び縮みする（AutoSize）
+    /// </summary>
     static FlowLayoutPanel Group(string title)
     {
-        var box = new GroupBox { Text = title, AutoSize = true, Dock = DockStyle.Fill, Padding = new Padding(8), Margin = new Padding(0, 0, 0, 8) };
-        var flow = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false, Dock = DockStyle.Fill };
-        box.Controls.Add(flow);
+        var outer = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false, Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 8) };
+        var header = new Button
+        {
+            AutoSize = true,
+            FlatStyle = FlatStyle.Flat,
+            TextAlign = ContentAlignment.MiddleLeft,
+            Cursor = Cursors.Hand,
+            Margin = Padding.Empty,
+        };
+        header.FlatAppearance.BorderSize = 0;
+        header.Font = new Font(SystemFonts.MessageBoxFont!, FontStyle.Bold);
+        var flow = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false, Padding = new Padding(8, 0, 0, 0) };
+        void Show() => header.Text = $"{(flow.Visible ? "▼" : "▶")} {title}";
+        header.Click += (_, _) =>
+        {
+            flow.Visible = !flow.Visible;
+            Show();
+        };
+        Show();
+        outer.Controls.Add(header);
+        outer.Controls.Add(flow);
         return flow;
     }
 
-    static Label Note(string text, bool warning = false) => new()
+    static Label Note(string text, bool warning = false, int indent = 20) => new()
     {
         Text = text,
         AutoSize = true,
-        MaximumSize = new Size(440, 0),
+        MaximumSize = new Size(460 - indent, 0),
         ForeColor = warning ? Color.FromArgb(0xB0, 0x50, 0x00) : SystemColors.GrayText,
-        Margin = new Padding(warning ? 3 : 20, 0, 3, 6),
+        Margin = new Padding(warning ? 3 : indent, 0, 3, 6),
     };
 }

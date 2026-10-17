@@ -308,7 +308,8 @@ sealed class TrayContext : ApplicationContext, IQrSink
         }
 
         CheckNotifications();
-        _settingsForm = new SettingsForm(_settings, _app, VrchatFolder(), _notificationsBlocked, SaveSettings, UnregisterAndExit, ClearHistory);
+        _settingsForm = new SettingsForm(_settings, _app, VrchatFolder(), _notificationsBlocked, SaveSettings, UnregisterAndExit, ClearHistory,
+            () => OpenList("読んだ QR の一覧", _app.History.Recent(History.Capacity)));
         _settingsForm.Show();
         _settingsForm.Activate();
     }

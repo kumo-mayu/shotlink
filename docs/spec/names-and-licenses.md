@@ -10,6 +10,12 @@
   - 読みの類似（称呼（類似検索）で「ショットリンク」）：53 件。うち区分 09（ソフトウェアなど）は 20 件で、同じ読みの物は無い
   - 区分 09 で読みが近い物：「ShortLinks（ショートリンクス）」（さつき株式会社、2026-02 出願・審査中）、「SHOWLINK（ショーリンク）」（Shure、登録）、「ほっとリンク／HOT Link」（帝人、登録）、「ThothLink（トートリンク）」（OSSTech、登録）
 
+## 「QRコード」の商標の書き方（2026-10-17）
+
+- デンソーウェーブの FAQ「登録商標文の例を知りたい」（denso-wave.com/ja/adcd/support/faq/trademark/comment/hy25050115.html）の和文の例：「QRコードは株式会社デンソーウェーブの登録商標です」。英文の例は「QR Code is a registered trademark of DENSO WAVE INCORPORATED in Japan and in other countries.」
+- 同じ FAQ の「掲載単位」「掲載場所」：名称を使う画面・印刷物ごとに載せる。場所はデザインに合わせて決めてよい
+- ShotLink は README・zip の README.txt・設定の窓の「このアプリについて」に和文の例のまま載せている（Claude が FAQ を引いた）
+
 ## VRChat の名前の使い方（2026-10-14）
 
 - VRChat のブランドガイドラインはロゴの決まりで、ツールの名前の決まりは無い
