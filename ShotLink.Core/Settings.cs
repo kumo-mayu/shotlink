@@ -6,13 +6,31 @@ public sealed record Settings
     /// <summary>URL を直接開く（既定 OFF。仕様書 4章 [決定]）</summary>
     public bool OpenDirectly { get; init; }
 
-    /// <summary>1枚に 4 件以上あって通知をまとめたときも直接開く（既定 OFF。仕様書 3.5）</summary>
-    public bool OpenWhenSummarized { get; init; }
+    /// <summary>直接開くのを、一覧のサイトだけに絞る（既定 OFF。仕様書 3.6）</summary>
+    public bool OpenOnlyAllowedSites { get; init; }
 
-    /// <summary>同じ URL を 60 秒以内にもう一度撮ったときも開く（既定 OFF。仕様書 3.4）</summary>
+    /// <summary>直接開いてよいサイトのホスト名。下位のドメインも含む（仕様書 3.6）</summary>
+    public IReadOnlyList<string> AllowedSites { get; init; } = [];
+
+    /// <summary>
+    /// 同じ URL を続けて撮ったときも毎回開く（既定 OFF。仕様書 3.4）。画面では裏返して「同じ URL は連続して開かない」と見せる。
+    /// 名前は前の版の settings.json をそのまま読むために変えない
+    /// </summary>
     public bool ReopenSameUrl { get; init; }
 
-    /// <summary>URL 以外の QR も知らせる</summary>
+    /// <summary>同じ URL をもう一度開くまでの秒数（既定 60。仕様書 3.4）</summary>
+    public int ReopenSeconds { get; init; } = QrPolicy.DefaultReopenSeconds;
+
+    /// <summary>1枚に複数あるとき、通知を1件にまとめる（既定 ON。仕様書 3.5）</summary>
+    public bool Summarize { get; init; } = true;
+
+    /// <summary>この件数以上でまとめる（既定 4。仕様書 3.5）</summary>
+    public int SummarizeThreshold { get; init; } = QrPolicy.DefaultSummarizeThreshold;
+
+    /// <summary>まとめたときも直接開く（既定 OFF。仕様書 3.5）</summary>
+    public bool OpenWhenSummarized { get; init; }
+
+    /// <summary>URL 以外の QR も知らせる。画面では裏返して「URL のみ通知する」と見せる</summary>
     public bool NotifyNonUrl { get; init; } = true;
 
     /// <summary>VRChat の写真フォルダを見張る</summary>
@@ -24,15 +42,19 @@ public sealed record Settings
     /// <summary>Windows の起動時に起動する。実際の登録はレジストリの Run で、これは画面に出すための控え</summary>
     public bool StartWithWindows { get; init; }
 
-    /// <summary>通知の音を鳴らす</summary>
+    /// <summary>通知の音を鳴らす。画面では裏返して「サイレント通知にする」と見せる</summary>
     public bool PlaySound { get; init; } = true;
 
-    public DispatchOptions ToDispatchOptions() => new(OpenDirectly, NotifyNonUrl, OpenWhenSummarized, ReopenSameUrl);
+    public DispatchOptions ToDispatchOptions() => new(OpenDirectly, NotifyNonUrl, OpenWhenSummarized, ReopenSameUrl,
+        ReopenSeconds, Summarize ? SummarizeThreshold : null, OpenOnlyAllowedSites ? AllowedSites : null);
 
-    /// <summary>手で直した JSON の null の一覧・空の行を、空として受ける</summary>
+    /// <summary>手で直した JSON の null の一覧・空の行を空として受け、幅の外の数を幅に収める</summary>
     public Settings Normalized() => this with
     {
         ExtraFolders = (ExtraFolders ?? []).Where(f => f is not null && !string.IsNullOrWhiteSpace(f.Path)).ToArray(),
+        AllowedSites = (AllowedSites ?? []).Select(SiteAllowlist.Normalize).OfType<string>().Distinct(StringComparer.Ordinal).ToArray(),
+        ReopenSeconds = Math.Clamp(ReopenSeconds, QrPolicy.MinReopenSeconds, QrPolicy.MaxReopenSeconds),
+        SummarizeThreshold = Math.Clamp(SummarizeThreshold, QrPolicy.MinSummarizeThreshold, QrPolicy.MaxSummarizeThreshold),
     };
 }
 

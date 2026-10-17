@@ -28,6 +28,7 @@ public class ToastTextTests
         Assert.Equal("ブラウザで開きました", ToastText.For(D("https://a.example/", QrAction.Opened)).Footer);
         Assert.Equal("クリックで開きます", ToastText.For(D("https://a.example/", QrAction.NotifyToOpen)).Footer);
         Assert.Contains("少し前に開いた", ToastText.For(new QrDecision(QrClassifier.Classify("https://a.example/"), QrAction.NotifyToOpen, OpenedRecently: true)).Footer);
+        Assert.Contains("ホワイトリストに無い", ToastText.For(new QrDecision(QrClassifier.Classify("https://a.example/"), QrAction.NotifyToOpen, NotAllowed: true)).Footer);
 
         var text = ToastText.For(D("こんにちは", QrAction.NotifyToCopy));
         Assert.Equal("QR を読みました", text.Title);

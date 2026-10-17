@@ -171,3 +171,40 @@ public class HistoryTests
         Assert.Equal($"t{History.Capacity + 4}", back[0].Text);
     }
 }
+
+public class SettingsNormalizeTests
+{
+    [Fact]
+    public void 既定は_60_秒_4_件でまとめる_一覧に絞らない()
+    {
+        var o = new Settings().Normalized().ToDispatchOptions();
+        Assert.Equal(60, o.ReopenSeconds);
+        Assert.Equal(4, o.SummarizeThreshold);
+        Assert.Null(o.AllowedSites);
+        Assert.False(o.ReopenSameUrl);
+    }
+
+    [Fact]
+    public void 幅の外の数は幅に収める()
+    {
+        var s = new Settings { ReopenSeconds = 0, SummarizeThreshold = 1000 }.Normalized();
+        Assert.Equal(1, s.ReopenSeconds);
+        Assert.Equal(99, s.SummarizeThreshold);
+        Assert.Equal(3600, (new Settings { ReopenSeconds = 99999 }.Normalized()).ReopenSeconds);
+    }
+
+    [Fact]
+    public void サイトの一覧はそろえて_空と重なりを捨てる()
+    {
+        var s = new Settings { AllowedSites = ["Example.com", "", "https://example.com/x", null!, "b.example"] }.Normalized();
+        Assert.Equal(["example.com", "b.example"], s.AllowedSites);
+    }
+
+    [Fact]
+    public void まとめない_一覧に絞るを_振り分けに渡す()
+    {
+        var o = new Settings { Summarize = false, OpenOnlyAllowedSites = true, AllowedSites = ["a.example"] }.ToDispatchOptions();
+        Assert.Null(o.SummarizeThreshold);
+        Assert.Equal(["a.example"], o.AllowedSites!);
+    }
+}

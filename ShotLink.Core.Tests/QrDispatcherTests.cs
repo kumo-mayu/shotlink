@@ -179,3 +179,96 @@ public class QrDispatcherSummarizeTests
         Assert.Equal(["z", "https://a.example/", "a", "m"], batch.Select(d => d.Content.Text));
     }
 }
+
+// 2026-10-17：秒数・まとめる件数・開くサイトの一覧を設定で変えられるようにした
+public class QrDispatcherSettingsTests
+{
+    static readonly DispatchOptions Open = new(OpenDirectly: true, NotifyNonUrl: true);
+
+    readonly FakeClock _clock = new();
+    readonly QrDispatcher _dispatcher;
+
+    public QrDispatcherSettingsTests() => _dispatcher = QrDispatcher.CreateDefault(_clock);
+
+    static string[] Urls(int n) => Enumerable.Range(1, n).Select(i => $"https://a.example/u{i}").ToArray();
+
+    [Fact]
+    public void 秒数を変えると_その秒数でまた開く()
+    {
+        var options = Open with { ReopenSeconds = 10 };
+        Assert.Equal(QrAction.Opened, Assert.Single(_dispatcher.Decide(["https://a.example/"], options)).Action);
+        _clock.Advance(TimeSpan.FromSeconds(9));
+        Assert.Equal(QrAction.NotifyToOpen, Assert.Single(_dispatcher.Decide(["https://a.example/"], options)).Action);
+        _clock.Advance(TimeSpan.FromSeconds(1));
+        Assert.Equal(QrAction.Opened, Assert.Single(_dispatcher.Decide(["https://a.example/"], options)).Action);
+    }
+
+    [Fact]
+    public void まとめないにすると_何件あっても_1件ずつ全部開く()
+    {
+        var batch = _dispatcher.Decide(Urls(10), Open with { SummarizeThreshold = null });
+        Assert.False(batch.Summarized);
+        Assert.All(batch, d => Assert.Equal(QrAction.Opened, d.Action));
+    }
+
+    [Fact]
+    public void まとめる件数を_2_にすると_2件でまとめる()
+    {
+        Assert.True(_dispatcher.Decide(Urls(2), Open with { SummarizeThreshold = 2 }).Summarized);
+        Assert.False(_dispatcher.Decide(["https://b.example/"], Open with { SummarizeThreshold = 2 }).Summarized);
+    }
+
+    [Theory]
+    [InlineData("https://example.com/a", true)]
+    [InlineData("https://www.example.com/a", true)]
+    [InlineData("https://WWW.Example.COM/a", true)]
+    [InlineData("https://example.com.evil.example/a", false)]
+    [InlineData("https://badexample.com/a", false)]
+    [InlineData("https://other.example/a", false)]
+    public void 一覧に絞ると_一覧のサイトと下位のドメインだけ開く(string url, bool opened)
+    {
+        var d = Assert.Single(_dispatcher.Decide([url], Open with { AllowedSites = ["example.com"] }));
+        Assert.Equal(opened ? QrAction.Opened : QrAction.NotifyToOpen, d.Action);
+        Assert.Equal(!opened, d.NotAllowed);
+    }
+
+    [Fact]
+    public void 国際化ドメインは_xn_の形で比べる()
+    {
+        var site = SiteAllowlist.Normalize("例え.jp")!;
+        Assert.StartsWith("xn--", site);
+        var d = Assert.Single(_dispatcher.Decide(["https://www.例え.jp/"], Open with { AllowedSites = [site] }));
+        Assert.Equal(QrAction.Opened, d.Action);
+    }
+
+    [Fact]
+    public void 一覧に無くて開かなかった物は_開いたと控えない()
+    {
+        _dispatcher.Decide(["https://a.example/"], Open with { AllowedSites = [] });
+        var d = Assert.Single(_dispatcher.Decide(["https://a.example/"], Open with { AllowedSites = ["a.example"] }));
+        Assert.Equal(QrAction.Opened, d.Action);
+    }
+
+    [Fact]
+    public void 一覧が空なら_何も開かない()
+    {
+        Assert.True(Assert.Single(_dispatcher.Decide(["https://a.example/"], Open with { AllowedSites = [] })).NotAllowed);
+    }
+}
+
+public class SiteAllowlistTests
+{
+    [Theory]
+    [InlineData("example.com", "example.com")]
+    [InlineData("  Example.COM.  ", "example.com")]
+    [InlineData("https://www.example.com/path?q=1", "www.example.com")]
+    [InlineData("*.example.com", "example.com")]
+    [InlineData("example.com/path", "example.com")]
+    [InlineData("", null)]
+    [InlineData("   ", null)]
+    [InlineData("a b", null)]
+    public void 書いた行をホスト名にそろえる(string entry, string? expected)
+    {
+        Assert.Equal(expected, SiteAllowlist.Normalize(entry));
+    }
+}
