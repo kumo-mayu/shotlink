@@ -25,7 +25,7 @@ C# / Windows Forms / .NET 10。まだ公開していません。写真も QR の
 
 - `ShotLink.Core/`：UI を持たない部分（QR の読み取り＝zxing-cpp、中身の振り分け、同じ URL を開く間隔、まとめる件数、見張り、書き込みの待ち、設定と履歴の保存、ログ、URL を開く所）
 - `ShotLink.App/`：通知領域のアイコンとメニュー、トースト通知、設定の窓、一覧の窓、画像の読み込み（Windows.Graphics.Imaging）、1つしか起動しない仕組み
-- `ShotLink.Core.Tests/`：xUnit の試験（242 件。手元ですべて通っている）
+- `ShotLink.Core.Tests/`：xUnit の試験（278 件。手元ですべて通っている）
 - `ShotLink.Fixtures/`・`tools/`：試験の素材を作る部品・測る道具・配布の道具
 - 決め事：`CLAUDE.md`（最初に読む）、`docs/spec.md`（仕様。[決定] はユーザーが決めたこと）、`docs/spec/*.md`
 

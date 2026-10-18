@@ -41,7 +41,7 @@ C# / Windows Forms / .NET 10。まだ公開していません。ネットにつ�
 - `ShotLink.Core/`：UI を持たない部分（QR の読み取り＝zxing-cpp、中身の振り分け `QrContent.cs`（`QrClassifier`）、`QrDispatcher`、`RecentOpenFilter`、
   `SiteAllowlist`（2026-10-17 に足したホワイトリスト）、`ToastText`、`Settings`、`JsonFileStore`、`History`、`ImageIntegrity`、`FileReadyWaiter`、`PhotoProcessor`、見張り、`UrlOpener`）
 - `ShotLink.App/`：通知領域のアイコン、トースト通知（`Toasts.cs`）、`TrayContext`、設定の窓、一覧の窓 `QrListForm`、画像の読み込み
-- `ShotLink.Core.Tests/`：xUnit の試験（242 件。すべて通る。`Attack/` は前回 2026-10-18 の攻撃の試験）
+- `ShotLink.Core.Tests/`：xUnit の試験（278 件。すべて通る。`Attack/` は 2026-10-18 の2回の攻撃の試験）
 - `ShotLink.Fixtures/`：試験の素材を作る部品（`QrMatrix`・`PngWriter`・`SceneBuilder`）。好きな中身の QR を PNG にできる
 - 決め事：`CLAUDE.md`（最初に読む）、`docs/spec.md`、`docs/spec/settings.md`
 
@@ -106,7 +106,9 @@ C# / Windows Forms / .NET 10。まだ公開していません。ネットにつ�
   2. `IdnHost` が投げるホストは、QR なら文字列、ホワイトリストの行なら捨てる（`QrClassifier.TryIdnHost`）。ほかに投げる所・同じ写真のほかの QR を止める所は残っていないか
   3. 見せる文字列から向きを変える文字と幅の無い文字を取り除く（`ToastText.StripInvisible`）。取り除く範囲から漏れていて、見え方を偽れる文字は無いか
   　（注意：xUnit の `Assert.Contains`/`DoesNotContain` の文字列版は文化圏に合わせて比べるので、無視される文字の確かめは `StringComparison.Ordinal` を付ける）
-- 前回の攻撃の試験（`ShotLink.Core.Tests/Attack/` の 6 ファイル）で試した角度は、すでに守れている。**前回試していない角度**を優先する
+  2回目（同じ日）に、直しの抜けとして次も直した：60 秒の鍵のホストは `xn--` の形にそろえる（全角・句点・`xn--` の書き分け）、
+  見えない文字は Cf の分類ごと取り除く、読み直してホストが変わる URL とそろえ直すと変わるホワイトリストの行は受け付けない
+- 前回までの攻撃の試験（`ShotLink.Core.Tests/Attack/` のファイル）で試した角度は、すでに守れている。**まだ試していない角度**を優先する
 
 ## 報告の形
 
