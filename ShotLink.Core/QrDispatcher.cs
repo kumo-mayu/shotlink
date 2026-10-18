@@ -71,7 +71,9 @@ public sealed class QrDispatcher(RecentOpenFilter recentOpen)
                 new QrDecision(content, QrAction.NotifyToOpen, NotAllowed: true),
             // 比べるのはブラウザに渡す形（UrlOpener が渡す AbsoluteUri）。原文で比べると、HTTPS://EXAMPLE.COM/ と https://example.com のような
             // 表記違いの QR を並べるだけで、同じ所を何度も開けた（2026-10-18、Codex の攻撃の点検）
-            QrKind.WebUrl when options.ReopenSameUrl || recentOpen.TryOpen(content.Url!.AbsoluteUri, TimeSpan.FromSeconds(options.ReopenSeconds)) =>
+            // さらにホストは見せている形（xn--）にそろえる。AbsoluteUri だけでは、全角の「ｅ」・句点の「。」・xn-- と Unicode の書き分けで
+            // 同じホストでも別の鍵になり、同じ所を何度も開けた（2026-10-18、Codex の2回目の攻撃の点検）
+            QrKind.WebUrl when options.ReopenSameUrl || recentOpen.TryOpen(ReopenKey(content), TimeSpan.FromSeconds(options.ReopenSeconds)) =>
                 new QrDecision(content, QrAction.Opened),
             QrKind.WebUrl => new QrDecision(content, QrAction.NotifyToOpen, OpenedRecently: true),
             _ when options.NotifyNonUrl => new QrDecision(content, QrAction.NotifyToCopy),
@@ -79,5 +81,12 @@ public sealed class QrDispatcher(RecentOpenFilter recentOpen)
         }).ToList();
 
         return new QrBatch(decisions, summarized);
+    }
+
+    /// <summary>同じ URL かを比べる鍵。ホストは xn-- の形、ほかはブラウザに渡す形（既定のポート・パスの正規化は Uri がそろえる）</summary>
+    static string ReopenKey(QrContent content)
+    {
+        var url = content.Url!;
+        return $"{url.Scheme}://{content.Host}:{url.Port}{url.PathAndQuery}{url.Fragment}";
     }
 }
