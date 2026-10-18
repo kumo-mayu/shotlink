@@ -69,7 +69,9 @@ public sealed class QrDispatcher(RecentOpenFilter recentOpen)
             // 一覧に無い物は、開いたと控える前に外す。控えると、あとで一覧に足しても少しの間開かない
             QrKind.WebUrl when options.AllowedSites is { } sites && !SiteAllowlist.Contains(sites, content.Host!) =>
                 new QrDecision(content, QrAction.NotifyToOpen, NotAllowed: true),
-            QrKind.WebUrl when options.ReopenSameUrl || recentOpen.TryOpen(content.Text, TimeSpan.FromSeconds(options.ReopenSeconds)) =>
+            // 比べるのはブラウザに渡す形（UrlOpener が渡す AbsoluteUri）。原文で比べると、HTTPS://EXAMPLE.COM/ と https://example.com のような
+            // 表記違いの QR を並べるだけで、同じ所を何度も開けた（2026-10-18、Codex の攻撃の点検）
+            QrKind.WebUrl when options.ReopenSameUrl || recentOpen.TryOpen(content.Url!.AbsoluteUri, TimeSpan.FromSeconds(options.ReopenSeconds)) =>
                 new QrDecision(content, QrAction.Opened),
             QrKind.WebUrl => new QrDecision(content, QrAction.NotifyToOpen, OpenedRecently: true),
             _ when options.NotifyNonUrl => new QrDecision(content, QrAction.NotifyToCopy),
