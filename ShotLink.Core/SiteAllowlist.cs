@@ -25,12 +25,13 @@ public static class SiteAllowlist
             text = "https://" + text;
         }
 
-        if (!Uri.TryCreate(text, UriKind.Absolute, out var uri) || string.IsNullOrEmpty(uri.IdnHost))
+        // 手で書いた一行が IdnHost で投げると、設定の読み込みごと止まって起動できなかった。使えない行として捨てる
+        if (!Uri.TryCreate(text, UriKind.Absolute, out var uri) || QrClassifier.TryIdnHost(uri) is not { } idn)
         {
             return null;
         }
 
-        var host = uri.IdnHost.TrimEnd('.').ToLowerInvariant();
+        var host = idn.TrimEnd('.').ToLowerInvariant();
         return host.Length == 0 ? null : host;
     }
 

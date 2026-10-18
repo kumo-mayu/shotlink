@@ -19,9 +19,27 @@ public static class QrClassifier
     public static QrContent Classify(string text)
     {
         var url = TryWebUrl(text);
-        return url is null
+        var host = url is null ? null : TryIdnHost(url);
+        return host is null
             ? new QrContent(text, QrKind.Text, null, null)
-            : new QrContent(text, QrKind.WebUrl, url, url.IdnHost);
+            : new QrContent(text, QrKind.WebUrl, url, host);
+    }
+
+    /// <summary>
+    /// Uri.TryCreate が通っても、IdnHost を読むと UriFormatException を投げるホストがある（U+061C・U+200C・全角のコロンなど）。
+    /// 投げたままだと、同じ写真のほかの QR まで処理されなかった（2026-10-18、Codex の攻撃の点検）。開けない物として文字列で扱う
+    /// </summary>
+    internal static string? TryIdnHost(Uri uri)
+    {
+        try
+        {
+            var host = uri.IdnHost;
+            return string.IsNullOrEmpty(host) ? null : host;
+        }
+        catch (UriFormatException)
+        {
+            return null;
+        }
     }
 
     static Uri? TryWebUrl(string text)

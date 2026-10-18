@@ -267,6 +267,8 @@ public class SiteAllowlistTests
     [InlineData("", null)]
     [InlineData("   ", null)]
     [InlineData("a b", null)]
+    [InlineData("a\u061Cb.example", null)]
+    [InlineData("a\u200Cb.example", null)]
     public void 書いた行をホスト名にそろえる(string entry, string? expected)
     {
         Assert.Equal(expected, SiteAllowlist.Normalize(entry));
