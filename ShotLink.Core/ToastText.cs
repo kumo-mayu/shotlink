@@ -79,9 +79,9 @@ public sealed record ToastText(string Title, string Body, string Footer)
     }
 
     /// <summary>
-    /// \u66F8\u5F0F\u306E\u6587\u5B57\uFF08Cf\uFF1A\u5411\u304D\u3092\u5909\u3048\u308B\u6587\u5B57\u30FB\u5E45\u306E\u7121\u3044\u6587\u5B57\u30FB\u30BD\u30D5\u30C8\u30CF\u30A4\u30D5\u30F3\u30FB\u30BF\u30B0\u306E\u6587\u5B57\u306A\u3069\uFF09\u306F\u5206\u985E\u3054\u3068\u6D88\u3059\u3002\u4E00\u3064\u305A\u3064\u6319\u3052\u3066\u3044\u305F\u3089\u3001
-    /// U+00AD\u30FBU+180E\u30FBU+206A\u30FBU+E0061 \u304C\u6F0F\u308C\u305F\uFF082026-10-18\u3001Codex \u306E2\u56DE\u76EE\u306E\u653B\u6483\u306E\u70B9\u691C\uFF09\u3002
-    /// Cf \u3067\u306A\u3044\u898B\u3048\u306A\u3044\u6587\u5B57\u306F\u540D\u524D\u3067\u6319\u3052\u308B\uFF1A\u7D50\u5408\u66F8\u8A18\u7D20\u30B8\u30E7\u30A4\u30CA\u30FC\u3001\u30CF\u30F3\u30B0\u30EB\u306E\u57CB\u3081\u5B57\u3001\u7570\u4F53\u5B57\u306E\u9078\u629E\u5B50
+    /// 書式の文字（Cf：向きを変える文字・幅の無い文字・ソフトハイフン・タグの文字など）は分類ごと消す。一つずつ挙げていたら、
+    /// U+00AD・U+180E・U+206A・U+E0061 が漏れた（2026-10-18、Codex の2回目の攻撃の点検）。
+    /// Cf でない見えない文字は名前で挙げる：結合書記素ジョイナー、ハングルの埋め字、異体字の選択子
     /// </summary>
     static bool IsInvisible(System.Text.Rune r) =>
         System.Text.Rune.GetUnicodeCategory(r) == System.Globalization.UnicodeCategory.Format
