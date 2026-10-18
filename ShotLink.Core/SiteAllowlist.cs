@@ -12,6 +12,16 @@ public static class SiteAllowlist
     /// </summary>
     public static string? Normalize(string? entry)
     {
+        // そろえた結果をもう一度そろえて変わる行は捨てる。U+037E は1回目で「a;b.example」になり、2回目で消えた。
+        // 保存と読み込みのたびにそろえるので、変わる行を残すと、開くサイトが知らないうちに減る（2026-10-18、Codex の2回目の攻撃の点検）
+        var host = NormalizeOnce(entry);
+
+        // IPv6 は IdnHost でかっこが外れる。そのままでは URL として読めないので、読み直すときだけ付け直す
+        return host is not null && NormalizeOnce(host.Contains(':') ? $"[{host}]" : host) == host ? host : null;
+    }
+
+    static string? NormalizeOnce(string? entry)
+    {
         var text = entry?.Trim();
         if (string.IsNullOrEmpty(text))
         {

@@ -20,6 +20,14 @@ public static class QrClassifier
     {
         var url = TryWebUrl(text);
         var host = url is null ? null : TryIdnHost(url);
+
+        // ブラウザに渡す形（AbsoluteUri）を読み直して、同じホストの URL にならない物は開かない。U+037E は IDN の変換で「;」に、
+        // U+1FEF は「`」になり、見せたホスト名と渡す URL の読まれ方がずれた（2026-10-18、Codex の2回目の攻撃の点検）
+        if (host is not null && (TryWebUrl(url!.AbsoluteUri) is not { } again || TryIdnHost(again) != host))
+        {
+            host = null;
+        }
+
         return host is null
             ? new QrContent(text, QrKind.Text, null, null)
             : new QrContent(text, QrKind.WebUrl, url, host);
