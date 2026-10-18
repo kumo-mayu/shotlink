@@ -14,7 +14,7 @@ public sealed record ToastText(string Title, string Body, string Footer)
     public static ToastText For(QrDecision decision)
     {
         var c = decision.Content;
-        var body = Shorten(c.Text.Trim(), BodyLimit);
+        var body = Shorten(StripInvisible(c.Text).Trim(), BodyLimit);
         return decision.Action switch
         {
             QrAction.Opened => new(c.Host!, body, "ブラウザで開きました"),
@@ -50,9 +50,23 @@ public sealed record ToastText(string Title, string Body, string Footer)
         return label.Replace("&", "&&");
     }
 
-    /// <summary>改行とタブをつぶして1行にする</summary>
+    /// <summary>改行とタブをつぶして1行にする。見えない文字も取り除く（StripInvisible）</summary>
     public static string Flatten(string text) =>
-        string.Join(' ', text.Split(['\r', '\n', '\t'], StringSplitOptions.RemoveEmptyEntries)).Trim();
+        string.Join(' ', StripInvisible(text).Split(['\r', '\n', '\t'], StringSplitOptions.RemoveEmptyEntries)).Trim();
+
+    /// <summary>
+    /// 見せる文字列から、向きを変える文字（U+202E など）と幅の無い文字を取り除く。残すと、例えば「evil.example/」の後ろに
+    /// U+202E と「moc.elpmaxe」を置いた中身が、通知やメニューで example.com のように見える（2026-10-18、Codex の攻撃の点検）。
+    /// 見せる所だけに使う。開く URL（Url）とコピーする原文はそのまま
+    /// </summary>
+    public static string StripInvisible(string text) =>
+        text.Any(IsInvisible) ? string.Concat(text.Where(c => !IsInvisible(c))) : text;
+
+    static bool IsInvisible(char c) => c is '\u061C' or '\uFEFF'
+        or (>= '\u200B' and <= '\u200F')
+        or (>= '\u202A' and <= '\u202E')
+        or (>= '\u2060' and <= '\u2064')
+        or (>= '\u2066' and <= '\u2069');
 
     static string Shorten(string text, int limit) =>
         text.Length <= limit ? text : string.Concat(text.AsSpan(0, limit - 1), "…");

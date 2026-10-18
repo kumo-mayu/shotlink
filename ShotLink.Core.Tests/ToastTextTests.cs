@@ -129,3 +129,22 @@ public class ToastTextBatchTests
         Assert.Equal("6 件をブラウザで開きました。クリックで一覧を開きます", ToastText.ForBatch(batch).Footer);
     }
 }
+
+public class ToastTextInvisibleTests
+{
+    [Fact]
+    public void 見せる文字列からは消すが_開く_URL_と原文は変えない()
+    {
+        var text = "https://evil.example/\u202Emoc.elpmaxe";
+        var content = QrClassifier.Classify(text);
+        // 文化圏に合わせた比べ方では U+202E は無視される文字で、無くても「見つかった」になる
+        Assert.DoesNotContain("\u202E", ToastText.For(new QrDecision(content, QrAction.NotifyToOpen)).Body, StringComparison.Ordinal);
+        Assert.Equal(text, content.Text);
+    }
+
+    [Fact]
+    public void 通知の本文は改行を残す()
+    {
+        Assert.Contains("\n", ToastText.For(new QrDecision(QrClassifier.Classify("a\u200B\nb"), QrAction.NotifyToCopy)).Body);
+    }
+}
