@@ -1,6 +1,7 @@
 # 外部の AI による全域検査のプロンプト（読むだけ）
 
 Codex などの外部の AI に、このリポジトリを読むだけで点検させるときに渡す文。2026-10-14 に Chmonos の同じ文（`D:\work\ClaudeCode\chmonos\docs\dev\external-audit-prompt.md`）を元に作った。
+攻撃の試験を書いて走らせる点検は `external-attack-prompt.md`。
 直すのは、候補をもらってから、ユーザーとまとめ役（Claude）が進める。結果は `docs/feedback/review-<日付>-codex.md` に置く。
 
 走らせ方（読むだけの設定。リポジトリに書き込めない）：
@@ -24,7 +25,7 @@ C# / Windows Forms / .NET 10。まだ公開していません。写真も QR の
 
 - `ShotLink.Core/`：UI を持たない部分（QR の読み取り＝zxing-cpp、中身の振り分け、同じ URL を開く間隔、まとめる件数、見張り、書き込みの待ち、設定と履歴の保存、ログ、URL を開く所）
 - `ShotLink.App/`：通知領域のアイコンとメニュー、トースト通知、設定の窓、一覧の窓、画像の読み込み（Windows.Graphics.Imaging）、1つしか起動しない仕組み
-- `ShotLink.Core.Tests/`：xUnit の試験（122 件。手元ですべて通っている）
+- `ShotLink.Core.Tests/`：xUnit の試験（242 件。手元ですべて通っている）
 - `ShotLink.Fixtures/`・`tools/`：試験の素材を作る部品・測る道具・配布の道具
 - 決め事：`CLAUDE.md`（最初に読む）、`docs/spec.md`（仕様。[決定] はユーザーが決めたこと）、`docs/spec/*.md`
 
