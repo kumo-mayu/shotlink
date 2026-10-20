@@ -8,7 +8,8 @@ Paramroom のおまけとして同梱し、BOOTH の単独の無料商品とし�
   保存先・公開の流れ・このハーネスの元は Chmonos（`D:\work\ClaudeCode\chmonos`）が参考になる
 
 **返答・途中経過・報告はすべて日本語で書く。**ツールの結果や裏の作業の知らせ（英語で届く）を受けた直後の一言、サブエージェントへの指示と報告も日本語。
-長い会話で薄れるので、`.claude/settings.json` の `language` と、発言のたびに一言を差し込むフック（`UserPromptSubmit`）でも補っている。
+長い会話で薄れるので、`.claude/settings.json` の `language` と、発言のたびに一言を差し込むフック（harness プラグイン）でも補っている。
+全プロジェクト共通の決まりは `D:\work\ClaudeCode\CLAUDE.md`、共通の部品（仕上げ・守りのフック）は `D:\work\ClaudeCode\claude-harness` の harness プラグイン。
 
 ---
 
@@ -27,7 +28,7 @@ ShotLink は写真を**読むだけ**。作業でも同じ。
 
 - `%USERPROFILE%\Pictures\VRChat\`（本物の写真）と `...\LocalLow\VRChat\VRChat\config.json` に、書き込み・移動・削除をしない
 - 見張りの確かめは、作業用フォルダを「追加のフォルダ」にして、そこへ素材を**移動**する
-- `.claude/hooks/guard-paths.mjs` が、これらと本番の `settings.json`・`history.json` への書き込みを止め、シェルで触れるときは確認を求める
+- harness プラグインのガードが、これらと本番の `settings.json`・`history.json`（`.claude/guard.json`）への書き込みを止め、シェルで触れるときは確認を求める
 
 ### 3. 本番の設定と履歴に触らない
 
@@ -99,6 +100,6 @@ dotnet test
 ## 進め方
 
 - **コミットは Claude が適切な粒度で行う**（ユーザー指示 2026-10-14）。1つのコミットに1つの理由。メッセージはなぜそうしたかを日本語で書く
-- **`git push`・GitHub のリポジトリ作成・リリースの公開・BOOTH への登録は、ユーザーが自分で行う**
+- **`git push` は、その場で頼まれたときだけ行う**（共通の決まり、2026-10-20）。GitHub のリポジトリ作成・リリースの公開・BOOTH への登録は、ユーザーが自分で行う
 - 決め事・設計を変えたら `docs/spec.md` も直す。200行を超えそうなら `docs/spec/` に話題ごとに分ける
-- 仕上げの手順は `.claude/skills/wrap-up/`
+- 仕上げは harness プラグインの `wrap-up` スキル。ShotLink だけの手順（ビルド・直す文書・点検）は `.claude/wrap-up.md`
