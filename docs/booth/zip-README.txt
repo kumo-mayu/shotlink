@@ -6,7 +6,7 @@ VRChat で撮った写真に QR コードが写っていたら、その中身を
 Paramroom で相手のアバターに出た QR コードも、カメラで撮るだけで PC に受け取れます。
 
   GitHub : https://github.com/kumo-mayu/shotlink
-  BOOTH  : 【未定：BOOTH の商品ページの URL】
+  BOOTH  : https://kumo-mayu.booth.pm/items/9022718
   お問い合わせ : BOOTH ショップのメッセージ、または X（@kumo_mayu79）の DM
 
 
