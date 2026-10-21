@@ -8,7 +8,7 @@
     <DebugType>embedded</DebugType>
 
     <!-- 配る版。ここ1か所で全プロジェクトにそろえる -->
-    <Version>0.1.0</Version>
+    <Version>1.0.0</Version>
     <Product>ShotLink</Product>
     <Copyright>Copyright 2026 kumo_mayu</Copyright>
   </PropertyGroup>
