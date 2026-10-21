@@ -1,3 +1,4 @@
+using Microsoft.Toolkit.Uwp.Notifications;
 using ShotLink.Core;
 
 namespace ShotLink.App;
@@ -5,7 +6,7 @@ namespace ShotLink.App;
 static class Program
 {
     [STAThread]
-    static int Main()
+    static int Main(string[] args)
     {
         var homeOverride = Environment.GetEnvironmentVariable(ShotLinkHome.EnvironmentVariable);
         var development = !string.IsNullOrWhiteSpace(homeOverride);
@@ -30,7 +31,9 @@ static class Program
         AppDomain.CurrentDomain.UnhandledException += (_, e) => app.Log.Write($"止まる例外：{e.ExceptionObject}");
 
         ApplicationConfiguration.Initialize();
-        using var tray = new TrayContext(app, instance);
+        // 手で起動したときだけ「起動しました」と知らせる。通知のクリックで起こされたときは、そのクリックの用事だけを済ませる
+        var announceStart = !args.Contains(StartupRegistration.Argument) && !ToastNotificationManagerCompat.WasCurrentProcessToastActivated();
+        using var tray = new TrayContext(app, instance, announceStart);
         Application.Run(tray);
         return 0;
     }

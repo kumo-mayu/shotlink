@@ -69,6 +69,8 @@ sealed class Toasts : IDisposable
 
     public void ShowSettingsHint(string title, string body) => Show(ToastKind.Settings, "", title, body, "クリックで設定を開きます");
 
+    public void ShowStarted(ToastText text) => Show(ToastKind.Settings, "", text.Title, text.Body, text.Footer);
+
     /// <summary>Windows への通知の登録を消す（仕様書 8章。exe を消す前に押してもらう）</summary>
     public static void Unregister() => ToastNotificationManagerCompat.Uninstall();
 

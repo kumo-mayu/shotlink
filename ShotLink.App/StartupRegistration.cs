@@ -50,5 +50,11 @@ sealed class StartupRegistration(bool allowed)
         }
     }
 
-    static string Command => $"\"{Environment.ProcessPath}\"";
+    /// <summary>
+    /// Windows の起動時に起動したことを見分ける引数。そのときは「起動しました」の通知を出さない（毎朝出ると邪魔になる）。
+    /// 前の版の登録には付いていないが、起動のたびの Refresh で付け直される
+    /// </summary>
+    public const string Argument = "--startup";
+
+    static string Command => $"\"{Environment.ProcessPath}\" {Argument}";
 }

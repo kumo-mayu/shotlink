@@ -36,6 +36,17 @@ public sealed record ToastText(string Title, string Body, string Footer)
         return new($"QR を {batch.Count} 件読みました", body, footer);
     }
 
+    /// <summary>
+    /// 手で起動したときの通知（仕様書 7章）。窓が出ず、Windows 11 では新しいアイコンが「∧」の中に隠れることが多いので、
+    /// 何も知らせないと「起動しなかった」と思って何度も押される
+    /// </summary>
+    public static ToastText Started(bool watchVrchat, int extraFolders) => new(
+        "ShotLink を起動しました",
+        watchVrchat ? "VRChat の写真フォルダを監視しています"
+            : extraFolders > 0 ? "追加したフォルダを監視しています"
+            : "監視するフォルダがありません",
+        "クリックで設定を開きます");
+
     /// <summary>メニューの「最近読んだ QR」の1行。改行をつぶし、長ければ切る</summary>
     public static string MenuLabel(string text, int limit = 60)
     {

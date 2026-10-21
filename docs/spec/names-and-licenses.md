@@ -14,7 +14,7 @@
 
 - デンソーウェーブの FAQ「登録商標文の例を知りたい」（denso-wave.com/ja/adcd/support/faq/trademark/comment/hy25050115.html）の和文の例：「QRコードは株式会社デンソーウェーブの登録商標です」。英文の例は「QR Code is a registered trademark of DENSO WAVE INCORPORATED in Japan and in other countries.」
 - 同じ FAQ の「掲載単位」「掲載場所」：名称を使う画面・印刷物ごとに載せる。場所はデザインに合わせて決めてよい
-- ShotLink は README・zip の README.txt・設定の窓の「このアプリについて」に和文の例のまま載せている（Claude が FAQ を引いた）
+- ShotLink は README・zip の README.txt・設定の窓の「このアプリについて」・読んだ QR の一覧の窓（2026-10-21 に足した）に和文の例のまま載せている（Claude が FAQ を引いた）
 
 ## VRChat の名前の使い方（2026-10-14）
 

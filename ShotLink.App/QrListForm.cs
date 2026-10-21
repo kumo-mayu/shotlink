@@ -66,8 +66,11 @@ sealed class QrListForm : Form
         CancelButton = close;
 
         var empty = new Label { Text = "読んだ QR はまだありません。", AutoSize = true, Dock = DockStyle.Top, Visible = entries.Count == 0 };
+        // 題名に「QR」を使う画面なので、ここにも商標の一文を載せる（SettingsForm.QrTrademark）。ボタンのすぐ上に小さく
+        var trademark = new Label { Text = SettingsForm.QrTrademark, AutoSize = true, Dock = DockStyle.Bottom, ForeColor = SystemColors.GrayText, Padding = new Padding(0, 6, 0, 0) };
         Controls.Add(_list);
         Controls.Add(empty);
+        Controls.Add(trademark);
         Controls.Add(buttons);
     }
 

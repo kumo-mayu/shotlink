@@ -14,7 +14,14 @@ sealed class SettingsForm : Form
     readonly Action _openHistory;
 
     // 字下げは、親の項目が ON のときだけ意味を持つ項目（20 で1段、40 で2段）
-    readonly CheckBox _openDirectly = new() { Text = "URL をブラウザで開く", AutoSize = true };
+    // メニューの項目も同じ名前と一言を使う（TrayContext）。名前が2つあると、README で探せなかった
+    internal const string OpenDirectlyLabel = "URL をブラウザで開く";
+    internal const string OpenDirectlyWarning = "ON にすると、知らない人が見せた QR の URL も確かめずに開きます。";
+
+    // 名称を使う画面ごとに載せる（デンソーウェーブの FAQ「登録商標文の掲載単位」）。文はその FAQ の和文の例のまま
+    internal const string QrTrademark = "QRコードは株式会社デンソーウェーブの登録商標です。";
+
+    readonly CheckBox _openDirectly = new() { Text = OpenDirectlyLabel, AutoSize = true };
     readonly CheckBox _allowedOnly = new() { Text = "ホワイトリストに絞る（自分で指定したサイトのみそのまま開きます）", AutoSize = true, Margin = new Padding(20, 0, 3, 3) };
     readonly Button _editSites = new() { Text = "サイトを編集…", AutoSize = true, Margin = new Padding(40, 0, 3, 6) };
     IReadOnlyList<string> _allowedSites = [];
@@ -71,7 +78,7 @@ sealed class SettingsForm : Form
         // ---- QR を読んだとき ----
         var read = Group("QR を読んだとき");
         read.Controls.Add(_openDirectly);
-        read.Controls.Add(Note("ON にすると、知らない人が見せた QR の URL も確かめずに開きます。"));
+        read.Controls.Add(Note(OpenDirectlyWarning));
         read.Controls.Add(_allowedOnly);
         // 入力欄を窓の中に置くと、窓が 1080p の画面に収まらない高さになった（1074 px）。別の小さな窓で直す
         _editSites.Click += (_, _) => EditSites();
@@ -151,8 +158,7 @@ sealed class SettingsForm : Form
         about.Controls.Add(new Label { Text = $"ShotLink {Version}", AutoSize = true });
         about.Controls.Add(Note("VRChat Inc. とは関係のない、非公式のツールです。"));
         about.Controls.Add(Note("ShotLink はネットにつながりません。写真も QR の中身も、どこへも送りません。"));
-        // 名称を使う画面ごとに載せる（デンソーウェーブの FAQ「登録商標文の掲載単位」）。文はその FAQ の和文の例のまま
-        about.Controls.Add(Note("QRコードは株式会社デンソーウェーブの登録商標です。"));
+        about.Controls.Add(Note(QrTrademark));
         var notices = new LinkLabel { Text = "同梱しているライブラリのライセンス", AutoSize = true };
         notices.LinkClicked += (_, _) => ShowNotices();
         about.Controls.Add(notices);

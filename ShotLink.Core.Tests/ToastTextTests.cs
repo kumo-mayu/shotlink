@@ -6,6 +6,19 @@ public class ToastTextTests
 {
     static QrDecision D(string text, QrAction action) => new(QrClassifier.Classify(text), action);
 
+    [Theory]
+    [InlineData(true, 0, "VRChat の写真フォルダを監視しています")]
+    [InlineData(true, 2, "VRChat の写真フォルダを監視しています")]
+    [InlineData(false, 1, "追加したフォルダを監視しています")]
+    [InlineData(false, 0, "監視するフォルダがありません")]
+    public void 起動の通知は監視している場所を書く(bool watchVrchat, int extraFolders, string body)
+    {
+        var t = ToastText.Started(watchVrchat, extraFolders);
+        Assert.Equal("ShotLink を起動しました", t.Title);
+        Assert.Equal(body, t.Body);
+        Assert.Equal("クリックで設定を開きます", t.Footer);
+    }
+
     [Fact]
     public void URL_は一行目にホスト名()
     {

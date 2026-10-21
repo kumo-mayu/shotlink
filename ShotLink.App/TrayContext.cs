@@ -15,7 +15,7 @@ sealed class TrayContext : ApplicationContext, IQrSink
     readonly SynchronizationContext _ui;
     readonly AppServices _app;
     readonly NotifyIcon _icon;
-    readonly ContextMenuStrip _menu = new();
+    readonly ContextMenuStrip _menu = new() { ShowItemToolTips = true };
     readonly System.Windows.Forms.Timer _retry = new() { Interval = (int)RetryInterval.TotalMilliseconds };
     readonly PhotoWatch _watch;
     readonly PhotoProcessor _processor;
@@ -30,7 +30,7 @@ sealed class TrayContext : ApplicationContext, IQrSink
     bool _processorStopped;
     bool _historySaveFailed;
 
-    public TrayContext(AppServices app, SingleInstance instance)
+    public TrayContext(AppServices app, SingleInstance instance, bool announceStart)
     {
         // 画面の部品が1つも無いうちは、Windows Forms の受け渡し先が入っていない。先に入れてから捕まえる
         SynchronizationContext.SetSynchronizationContext(new WindowsFormsSynchronizationContext());
@@ -74,6 +74,11 @@ sealed class TrayContext : ApplicationContext, IQrSink
 
         ApplyTargets();
         CheckNotifications();
+        if (announceStart)
+        {
+            _toasts.ShowStarted(ToastText.Started(_settings.WatchVrchat, _settings.ExtraFolders.Count));
+        }
+
         app.Log.Write($"起動：版 {Application.ProductVersion}・保存先 {app.Home}");
     }
 
@@ -232,7 +237,13 @@ sealed class TrayContext : ApplicationContext, IQrSink
         _menu.Items.Add(recent);
         _menu.Items.Add(new ToolStripSeparator());
 
-        var openDirectly = new ToolStripMenuItem("URL を直接開く") { Checked = _settings.OpenDirectly, CheckOnClick = true };
+        // 名前と危険の一言は設定の窓と同じにする。1回のクリックで ON になる場所なので、ここでも危険を見せる（仕様書 4章）
+        var openDirectly = new ToolStripMenuItem(SettingsForm.OpenDirectlyLabel)
+        {
+            Checked = _settings.OpenDirectly,
+            CheckOnClick = true,
+            ToolTipText = SettingsForm.OpenDirectlyWarning,
+        };
         openDirectly.Click += (_, _) => SaveSettings(_settings with { OpenDirectly = openDirectly.Checked });
         _menu.Items.Add(openDirectly);
 
