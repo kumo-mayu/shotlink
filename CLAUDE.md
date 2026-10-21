@@ -1,15 +1,16 @@
 # ShotLink — AIへの指示
 
-VRChat の写真フォルダ（と、手で足したフォルダ）を見張り、写真に写った QR コードの中身を知らせる・URL ならブラウザで開く常駐型の Windows アプリ（WPF / .NET 10）。
+VRChat の写真フォルダ（と、手で足したフォルダ）を見張り、写真に写った QR コードの中身を知らせる・URL ならブラウザで開く常駐型の Windows アプリ（Windows Forms / .NET 10）。
 Paramroom のおまけとして同梱し、BOOTH の単独の無料商品としても配る。
 
 - 仕様は `docs/spec.md`。**作業の前に読む。** [決定] の項目はユーザーが決めたもの。変えるときは必ず聞く
-- アイデアの経緯は idea-vault（`D:\work\ClaudeCode\idea-vault\ideas\vrc-photo-qr-watcher.md`）。配布の形は Paramroom（`D:\work\ClaudeCode\avatar-image-pad`、`tools/release/make-release.sh`）、
-  保存先・公開の流れ・このハーネスの元は Chmonos（`D:\work\ClaudeCode\chmonos`）が参考になる
+- アイデアの経緯は idea-vault（手元だけの非公開のリポジトリ `../idea-vault` の `projects/shotlink.md`）。
+  配布の形は [Paramroom](https://github.com/kumo-mayu/Paramroom)（手元では `../avatar-image-pad`、`tools/release/make-release.sh`）、
+  保存先・公開の流れ・このハーネスの元は [Chmonos](https://github.com/kumo-mayu/chmonos)（手元では `../chmonos`）が参考になる
 
 日本語で書くのは返答だけでなく、ツールの結果や裏の作業の知らせ（英語で届く）を受けた直後の一言、サブエージェントへの指示と報告も。
 長い会話で薄れるので、`.claude/settings.json` の `language` と、発言のたびに一言を差し込むフック（harness プラグイン）でも補っている。
-全プロジェクト共通の決まりは `D:\work\ClaudeCode\CLAUDE.md`、共通の部品（仕上げ・守りのフック）は `D:\work\ClaudeCode\claude-harness` の harness プラグイン。
+全プロジェクト共通の決まりは親フォルダの `../CLAUDE.md`、共通の部品（仕上げ・守りのフック）は `../claude-harness` の harness プラグイン（どちらも手元だけ）。
 
 ---
 

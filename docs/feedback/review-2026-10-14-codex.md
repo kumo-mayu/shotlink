@@ -44,7 +44,7 @@
 
 ### [致命] 開発用通知からの再起動が本番の保存先・登録に触れる
 
-- 場所：[Program.cs:10](D:/work/ClaudeCode/shotlink/ShotLink.App/Program.cs:10)、[AppServices.cs:12](D:/work/ClaudeCode/shotlink/ShotLink.App/AppServices.cs:12)、[AppIdentity.cs:15](D:/work/ClaudeCode/shotlink/ShotLink.App/AppIdentity.cs:15)、[TrayContext.cs:385](D:/work/ClaudeCode/shotlink/ShotLink.App/TrayContext.cs:385)
+- 場所：[Program.cs:10](../../ShotLink.App/Program.cs#L10)、[AppServices.cs:12](../../ShotLink.App/AppServices.cs#L12)、[AppIdentity.cs:15](../../ShotLink.App/AppIdentity.cs#L15)、[TrayContext.cs:385](../../ShotLink.App/TrayContext.cs#L385)
 - 条件：`SHOTLINK_HOME` を指定して通知を出し、通知を残して終了する。その後、通知をクリックして Windows に exe を起動させる。
 - 起きること：環境変数が引き継がれなければ、本番の `Logs` に書き、本番の設定・履歴を読み、本番の通知登録を使う。Run 登録があれば `Startup.Refresh` による更新対象にもなる。
 - 根拠：`Main` は環境変数だけで開発用かを決め、`ShotLinkHome.Resolve(..., allowProduction: true)` を呼ぶ。通知起動の引数から保存先を復元する処理はない。`AppServices` は即座にログの作成・古いログの削除・履歴の読み込みを行う。通常終了では `Toasts.Dispose` によりイベント購読を外すだけで、開発用通知を消さない。
@@ -54,7 +54,7 @@
 
 ### [致命] UNC の監視先・保存先によってネットへ出る
 
-- 場所：[VrchatPhotoFolder.cs:41](D:/work/ClaudeCode/shotlink/ShotLink.Core/VrchatPhotoFolder.cs:41)、[PhotoWatch.cs:219](D:/work/ClaudeCode/shotlink/ShotLink.Core/PhotoWatch.cs:219)、[FolderWatcher.cs:27](D:/work/ClaudeCode/shotlink/ShotLink.Core/FolderWatcher.cs:27)、[ShotLinkHome.cs:18](D:/work/ClaudeCode/shotlink/ShotLink.Core/ShotLinkHome.cs:18)
+- 場所：[VrchatPhotoFolder.cs:41](../../ShotLink.Core/VrchatPhotoFolder.cs#L41)、[PhotoWatch.cs:219](../../ShotLink.Core/PhotoWatch.cs#L219)、[FolderWatcher.cs:27](../../ShotLink.Core/FolderWatcher.cs#L27)、[ShotLinkHome.cs:18](../../ShotLink.Core/ShotLinkHome.cs#L18)
 - 条件：追加フォルダ、`picture_output_folder`、または `SHOTLINK_HOME` に、到達可能な `\\server\share\...` を指定する。
 - 起きること：Windows のネットワークファイルアクセスが発生する。監視先ならディレクトリ照会・画像の読み取り、保存先なら履歴の QR 全文を含む JSON の書き込みも外部共有に向かう。
 - 根拠：`Path.GetFullPath` は UNC をローカルパスに変えない。その後、`Directory.Exists` → `FileSystemWatcher`、または `Directory.CreateDirectory` → `File.WriteAllText` にそのまま渡す。UNC やネットワークドライブを拒否する検査はない。通信 API がなくても、この道で通信する。
@@ -64,7 +64,7 @@
 
 ### [致命] メニューと一覧では偽ドメインを原文のまま見せて開く
 
-- 場所：[TrayContext.cs:185](D:/work/ClaudeCode/shotlink/ShotLink.App/TrayContext.cs:185)、[QrListForm.cs:44](D:/work/ClaudeCode/shotlink/ShotLink.App/QrListForm.cs:44)、[ToastText.cs:39](D:/work/ClaudeCode/shotlink/ShotLink.Core/ToastText.cs:39)、[QrContent.cs:24](D:/work/ClaudeCode/shotlink/ShotLink.Core/QrContent.cs:24)
+- 場所：[TrayContext.cs:185](../../ShotLink.App/TrayContext.cs#L185)、[QrListForm.cs:44](../../ShotLink.App/QrListForm.cs#L44)、[ToastText.cs:39](../../ShotLink.Core/ToastText.cs#L39)、[QrContent.cs:24](../../ShotLink.Core/QrContent.cs#L24)
 - 条件：キリル文字の `а` を使った `https://аpple.com/` の QR を読み、通知ではなく「最近読んだ QR」または一覧から開く。
 - 起きること：見た目が `apple.com` に似た原文を表示し、実際には別の国際化ドメインを開く。長いユーザー情報を持つ `https://...@evil.example/` でも、メニューの60文字省略で本当のホストが隠れる。
 - 根拠：分類結果には安全表示用の `IdnHost` があるが、メニューは `MenuLabel(entry.Text)`、一覧は `Flatten(entry.Text)` を表示する。ツールチップにも別途ホストを出さない。クリックすると原文を再分類して実際のホストを開く。通知のタイトルだけにある偽装対策が、この2経路にはない。
@@ -74,7 +74,7 @@
 
 ### [重い] 不正な追加フォルダを設定すると起動できない
 
-- 場所：[Settings.cs:30](D:/work/ClaudeCode/shotlink/ShotLink.Core/Settings.cs:30)、[PhotoWatch.cs:219](D:/work/ClaudeCode/shotlink/ShotLink.Core/PhotoWatch.cs:219)、[TrayContext.cs:63](D:/work/ClaudeCode/shotlink/ShotLink.App/TrayContext.cs:63)、[Program.cs:33](D:/work/ClaudeCode/shotlink/ShotLink.App/Program.cs:33)
+- 場所：[Settings.cs:30](../../ShotLink.Core/Settings.cs#L30)、[PhotoWatch.cs:219](../../ShotLink.Core/PhotoWatch.cs#L219)、[TrayContext.cs:63](../../ShotLink.App/TrayContext.cs#L63)、[Program.cs:33](../../ShotLink.App/Program.cs#L33)
 - 条件：手で編集した `settings.json` の `extraFolders` に、JSON としては正しい `{"path":"D:\\bad\u0000path"}` を入れて起動する。
 - 起きること：起動途中に例外が出て、常駐を開始できない。他の正常な監視先も使えない。
 - 根拠：`Normalized` は null と空白だけを除外する。`TrayContext` のコンストラクター → `ApplyTargets` → `SetTargets` → `Deduplicate` の `Path.GetFullPath` が `ArgumentException` を出す。ここにフォルダ単位の例外処理はなく、`Application.Run` より前なので画面スレッドの例外ハンドラーでも回復できない。
@@ -84,7 +84,7 @@
 
 ### [重い] ログのアクセス拒否で写真処理ループが黙って停止する
 
-- 場所：[LogWriter.cs:26](D:/work/ClaudeCode/shotlink/ShotLink.Core/LogWriter.cs:26)、[PhotoProcessor.cs:94](D:/work/ClaudeCode/shotlink/ShotLink.Core/PhotoProcessor.cs:94)、[PhotoProcessor.cs:100](D:/work/ClaudeCode/shotlink/ShotLink.Core/PhotoProcessor.cs:100)、[TrayContext.cs:362](D:/work/ClaudeCode/shotlink/ShotLink.App/TrayContext.cs:362)
+- 場所：[LogWriter.cs:26](../../ShotLink.Core/LogWriter.cs#L26)、[PhotoProcessor.cs:94](../../ShotLink.Core/PhotoProcessor.cs#L94)、[PhotoProcessor.cs:100](../../ShotLink.Core/PhotoProcessor.cs#L100)、[TrayContext.cs:362](../../ShotLink.App/TrayContext.cs#L362)
 - 条件：起動後、当日のログを読み取り専用にするなどして、写真処理中のログ書き込みが `UnauthorizedAccessException` になる。
 - 起きること：写真処理の Task が失敗して終了する。見張りは動いたままなので、アイコンは「見張っています」と表示し、後続写真は行列に入り続ける。
 - 根拠：`LogWriter.Write` は `IOException` しか捕まえない。処理中のログ失敗は `LoopAsync` の catch に入るが、その catch も同じ `_log` を呼ぶため再び例外になる。行列が空になった際のメモリログは、その catch の外にある。`_loop` の失敗を常駐中に監視・通知する処理はない。
@@ -94,7 +94,7 @@
 
 ### [重い] 履歴の保存失敗が、その写真の通知まで止める
 
-- 場所：[History.cs:53](D:/work/ClaudeCode/shotlink/ShotLink.Core/History.cs:53)、[JsonFileStore.cs:48](D:/work/ClaudeCode/shotlink/ShotLink.Core/JsonFileStore.cs:48)、[TrayContext.cs:70](D:/work/ClaudeCode/shotlink/ShotLink.App/TrayContext.cs:70)、[Program.cs:29](D:/work/ClaudeCode/shotlink/ShotLink.App/Program.cs:29)
+- 場所：[History.cs:53](../../ShotLink.Core/History.cs#L53)、[JsonFileStore.cs:48](../../ShotLink.Core/JsonFileStore.cs#L48)、[TrayContext.cs:70](../../ShotLink.App/TrayContext.cs#L70)、[Program.cs:29](../../ShotLink.App/Program.cs#L29)
 - 条件：起動後にディスクが満杯になる、または `history.json` が置き換えできない状態で写真を撮る。
 - 起きること：その写真の通知も直接開く処理も行われない。保存できない状態が続けば、後続写真も同じように通知されない。メモリ上の履歴とディスク上の履歴も食い違う。
 - 根拠：`Handle` は UI に `Post` した後、先に全件の `History.Add` を行う。`Add` は錠の中でメモリを変更してから `Save` し、保存例外を戻す。例外は通知処理へ到達する前に UI コールバックを中断し、`Application.ThreadException` でログになる。非同期の `Post` 内なので、`PhotoProcessor` の「渡した先で落ちても続ける」catch は受け取れない。
@@ -104,7 +104,7 @@
 
 ### [重い] 一度受け付けたパスは、失敗しても再作成されても二度と読まない
 
-- 場所：[PhotoWatch.cs:29](D:/work/ClaudeCode/shotlink/ShotLink.Core/PhotoWatch.cs:29)、[PhotoWatch.cs:159](D:/work/ClaudeCode/shotlink/ShotLink.Core/PhotoWatch.cs:159)、[PhotoProcessor.cs:133](D:/work/ClaudeCode/shotlink/ShotLink.Core/PhotoProcessor.cs:133)、[FolderWatcher.cs:40](D:/work/ClaudeCode/shotlink/ShotLink.Core/FolderWatcher.cs:40)
+- 場所：[PhotoWatch.cs:29](../../ShotLink.Core/PhotoWatch.cs#L29)、[PhotoWatch.cs:159](../../ShotLink.Core/PhotoWatch.cs#L159)、[PhotoProcessor.cs:133](../../ShotLink.Core/PhotoProcessor.cs#L133)、[FolderWatcher.cs:40](../../ShotLink.Core/FolderWatcher.cs#L40)
 - 条件：追加フォルダで `capture.png` を作り、10秒以上書き込みを保持して読み取りを失敗させる。その後、同名の完成画像を置き直す。または同名ファイルを削除・再作成する撮影道具を使う。
 - 起きること：同じパスの写真は、アプリを再起動するまで処理されない。あふれ後の再走査でも救済されない。
 - 根拠：`OnAppeared` は処理成功より前に `_seen.Add` する。`_seen` から削除する処理はなく、処理失敗も PhotoWatch に返さない。変更通知は購読しておらず、再作成の Created 通知も `_seen` に弾かれる。保存しているのはファイルの世代ではなくパスだけ。
@@ -114,7 +114,7 @@
 
 ### [重い] あふれ後の再走査に、救済されない取りこぼしがある
 
-- 場所：[PhotoWatch.cs:170](D:/work/ClaudeCode/shotlink/ShotLink.Core/PhotoWatch.cs:170)、[PhotoWatch.cs:183](D:/work/ClaudeCode/shotlink/ShotLink.Core/PhotoWatch.cs:183)、[PhotoWatch.cs:188](D:/work/ClaudeCode/shotlink/ShotLink.Core/PhotoWatch.cs:188)
+- 場所：[PhotoWatch.cs:170](../../ShotLink.Core/PhotoWatch.cs#L170)、[PhotoWatch.cs:183](../../ShotLink.Core/PhotoWatch.cs#L183)、[PhotoWatch.cs:188](../../ShotLink.Core/PhotoWatch.cs#L188)
 - 条件：作成日時の古い画像を起動後に大量移動し、Created 通知があふれる。またはサブフォルダ監視中、再走査の途中にアクセス拒否の下位フォルダがある。
 - 起きること：前者では新しく入った画像が古い作成日時を理由に除外される。後者では列挙全体が中断し、読める場所の写真まで救済されない。どちらも知らせや再試行がない。
 - 根拠：再走査は「フォルダに入った時刻」ではなく `File.GetCreationTime >= _since` で選ぶ。さらに全件を `OrderBy(...).ToArray()` にしてから処理するため、列挙途中の例外でも一件も `OnAppeared` に渡さず catch から戻る。失敗を記録せず、次のあふれ以外に再走査の再試行がない。
@@ -124,7 +124,7 @@
 
 ### [中] 回数制限を決定時に使うため、遅れた UI がまとめて開く
 
-- 場所：[QrDispatcher.cs:64](D:/work/ClaudeCode/shotlink/ShotLink.Core/QrDispatcher.cs:64)、[OpenRateLimiter.cs:14](D:/work/ClaudeCode/shotlink/ShotLink.Core/OpenRateLimiter.cs:14)、[TrayContext.cs:72](D:/work/ClaudeCode/shotlink/ShotLink.App/TrayContext.cs:72)、[TrayContext.cs:104](D:/work/ClaudeCode/shotlink/ShotLink.App/TrayContext.cs:104)
+- 場所：[QrDispatcher.cs:64](../../ShotLink.Core/QrDispatcher.cs#L64)、[OpenRateLimiter.cs:14](../../ShotLink.Core/OpenRateLimiter.cs#L14)、[TrayContext.cs:72](../../ShotLink.App/TrayContext.cs#L72)、[TrayContext.cs:104](../../ShotLink.App/TrayContext.cs#L104)
 - 条件：保存やシェル起動などで UI スレッドが60秒以上詰まる。その間に裏の処理が最初の3件と、60秒後の別の3件について直接開くと決定する。
 - 起きること：UI が戻った直後、6件を短時間に開く。待機中に直接開くを OFF にしても、既に作られた決定には適用されない。
 - 根拠：回数を使う `limiter.TryTake` は裏の `Decide` で実行する。実際の `Process.Start` は後で UI の `Post` 内から行い、その時点で回数・現在の設定を確認しない。
@@ -134,7 +134,7 @@
 
 ### [中] 再走査と再開が重なると、一時停止中の写真を読む
 
-- 場所：[PhotoWatch.cs:116](D:/work/ClaudeCode/shotlink/ShotLink.Core/PhotoWatch.cs:116)、[PhotoWatch.cs:152](D:/work/ClaudeCode/shotlink/ShotLink.Core/PhotoWatch.cs:152)、[PhotoWatch.cs:170](D:/work/ClaudeCode/shotlink/ShotLink.Core/PhotoWatch.cs:170)
+- 場所：[PhotoWatch.cs:116](../../ShotLink.Core/PhotoWatch.cs#L116)、[PhotoWatch.cs:152](../../ShotLink.Core/PhotoWatch.cs#L152)、[PhotoWatch.cs:170](../../ShotLink.Core/PhotoWatch.cs#L170)
 - 条件：一時停止中に大量の写真が入り、あふれによる再走査が始まる。列挙中に利用者が再開する。
 - 起きること：一時停止中の写真が通知され、直接開くが ON なら URL を開く。
 - 根拠：再走査は一時停止中でも開始し、古い `_since` を錠の中でコピーしてから錠を解放して列挙する。`Resume` は `_since` を更新するが、進行中の再走査は古い値を使い続ける。その後の `OnAppeared` は現在の `_paused` と `_seen` だけを検査し、新しい `_since` や走査の世代を確認しない。
@@ -146,7 +146,7 @@
 
 ### [重い・要確認] 巨大な画像を展開する前の上限がない
 
-- 場所：[WinRtImageLoader.cs:19](D:/work/ClaudeCode/shotlink/ShotLink.App/WinRtImageLoader.cs:19)、[WinRtImageLoader.cs:47](D:/work/ClaudeCode/shotlink/ShotLink.App/WinRtImageLoader.cs:47)、[GrayImage.cs:13](D:/work/ClaudeCode/shotlink/ShotLink.Core/GrayImage.cs:13)
+- 場所：[WinRtImageLoader.cs:19](../../ShotLink.App/WinRtImageLoader.cs#L19)、[WinRtImageLoader.cs:47](../../ShotLink.App/WinRtImageLoader.cs#L47)、[GrayImage.cs:13](../../ShotLink.Core/GrayImage.cs#L13)
 - 条件：圧縮ファイルは小さいが、展開後は数 GB になる寸法の画像を監視先に置く。
 - 起きること：全画素を展開する要求が行われる。メモリ圧迫や長時間停止の程度、WIC が先に拒否するかは未確認。
 - 根拠：寸法を取得した後、上限検査なしで `GetPixelDataAsync` → `DetachPixelData` を呼ぶ。BGRA への代替では追加の配列も作る。`width * height` は checked 演算ではなく、画像処理そのものには時間上限・キャンセルがない。通常の例外なら `PhotoProcessor` が捕まえるため、必ず落ちるとは断定できない。
@@ -156,7 +156,7 @@
 
 ### [中・要確認] 通知引数を履歴と照合せず、そのまま操作に使う
 
-- 場所：[Toasts.cs:103](D:/work/ClaudeCode/shotlink/ShotLink.App/Toasts.cs:103)、[TrayContext.cs:122](D:/work/ClaudeCode/shotlink/ShotLink.App/TrayContext.cs:122)、[Program.cs:20](D:/work/ClaudeCode/shotlink/ShotLink.App/Program.cs:20)
+- 場所：[Toasts.cs:103](../../ShotLink.App/Toasts.cs#L103)、[TrayContext.cs:122](../../ShotLink.App/TrayContext.cs#L122)、[Program.cs:20](../../ShotLink.App/Program.cs#L20)
 - 条件：別のプロセスが通知の COM 起動経路に任意の `kind`・`text` を渡せる場合。または停止中の通知クリックと単一起動の判定が競合する場合。
 - 起きること：前者では、ShotLink が発行した通知か確認せず、渡された http/https URL を開く。後者でクリックが既存プロセスへ確実に届くかは未確認。
 - 根拠：`OnActivated` は引数を解析し、enum に変換できれば `Activated` に渡す。発行済み通知の識別子・履歴との照合はない。ただし URL は再分類されるため、非 http/https を開ける根拠にはならない。二つ目の起動は通知部品の初期化前に終了し、クリック転送はコメントで Windows 側に依存している。
