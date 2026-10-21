@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    BOOTH のサムネイルなどに使う、設定の窓の絵を書き出す。画面を撮るのではなく、窓を画面の外で組んで
+    DrawToBitmap で描くので、ほかの窓が写り込まず、何度でも同じ絵になる。中身は例の設定で、本物の設定・パスは使わない
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.17763.0</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <ApplicationIcon>..\..\ShotLink.App\ShotLink.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\ShotLink.App\ShotLink.App.csproj" />
+  </ItemGroup>
+
+</Project>
