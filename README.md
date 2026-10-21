@@ -4,17 +4,17 @@ VRChat で撮った写真に QR コードが写っていたら、その中身を
 中身が URL なら、通知をクリックするとブラウザで開けます。
 [Paramroom](https://github.com/kumo-mayu/Paramroom) で相手のアバターに出た QR コードも、カメラで撮るだけで PC に受け取れます。
 
-- 通知領域に常駐します（ウィンドウは設定の窓だけ）
+- 通知領域に常駐します。ウィンドウは設定画面だけです
 - VRChat の写真フォルダを自動で監視します。ほかのスクリーンショットのフォルダも追加できます
-- 開くのは `http` と `https` の URL だけです。「URL を直接開く」ははじめはオフです
-- ネットにはつながりません。写真も QR コードの中身も、どこへも送りません
+- 開くのは `http` と `https` の URL だけです。通知を待たずに開く「URL をブラウザで開く」は、はじめはオフです
+- ネットにはつながりません。写真も QR コードの中身もどこへも送りません
 
 VRChat Inc. とは関係のない、非公式のツールです。
 
 ## ダウンロード
 
-[Releases](https://github.com/kumo-mayu/shotlink/releases) から zip を取り、展開した `ShotLink.exe` を起動します（インストール不要）。
-使い方・消し方は zip の中の `README.txt` にあります。
+[Releases](https://github.com/kumo-mayu/shotlink/releases) から zip をダウンロードし、展開した `ShotLink.exe` を起動します。インストールは要りません。
+使い方とアンインストールの仕方は、zip の中の `README.txt` にあります。
 
 - Windows 10（1809 以降）または Windows 11 の 64 ビット版
 - exe に電子署名をしていないので、初回は「Windows によって PC が保護されました」と出ます。「詳細情報」→「実行」で起動できます
