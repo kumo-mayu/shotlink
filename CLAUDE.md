@@ -2,6 +2,7 @@
 
 VRChat の写真フォルダ（と、手で足したフォルダ）を見張り、写真に写った QR コードの中身を知らせる・URL ならブラウザで開く常駐型の Windows アプリ（Windows Forms / .NET 10）。
 Paramroom のおまけとして同梱し、BOOTH の単独の無料商品としても配る。
+**GitHub の公開のリポジトリ**。commit・文書に個人の情報を入れない。`.claude/` の設定に手元のフォルダの場所を書かない（`.claude/guard.json` の `"public": true` で、push の前に harness が点検する）。
 
 - 仕様は `docs/spec.md`。**作業の前に読む。** [決定] の項目はユーザーが決めたもの。変えるときは必ず聞く
 - アイデアの経緯は idea-vault（手元だけの非公開のリポジトリ `../idea-vault` の `projects/shotlink.md`）。
