@@ -17,6 +17,7 @@ dotnet test --nologo; if ($LASTEXITCODE) { throw "テスト失敗" }
 |---|---|
 | 決め事・設計・動き | `docs/spec.md`（200行を超えそうなら `docs/spec/` に話題ごとに分ける） |
 | 守る決め事・作業の手順 | `CLAUDE.md` |
+| 使う人に見える動き・画面・配り方 | `README.md`、BOOTH の原稿 `docs/booth/`（`item-page.md`・配る zip の `zip-README.txt`） |
 
 ## 点検（プロジェクトだけの物）
 
